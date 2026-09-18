@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
 import com.trussload.calculator.ui.AppNavigation
+import com.trussload.calculator.ui.V3Screen
 
 class MainActivity : ComponentActivity() {
 
@@ -13,7 +14,9 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             MaterialTheme {
-                AppNavigation()
+                AppNavigation {
+                    V3Screen()
+                }
             }
         }
     }
