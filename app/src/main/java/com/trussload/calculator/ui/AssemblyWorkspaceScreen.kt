@@ -1,16 +1,7 @@
 package com.trussload.calculator.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.weight
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -55,6 +46,7 @@ fun AssemblyWorkspaceScreen() {
             modifier = Modifier.fillMaxWidth(),
             tonalElevation = 2.dp
         ) {
+
             Column(
                 modifier = Modifier.padding(
                     horizontal = 14.dp,
@@ -138,10 +130,7 @@ fun AssemblyWorkspaceScreen() {
 
                         Text(
                             text = "Рабочая область",
-                            style =
-                                MaterialTheme
-                                    .typography
-                                    .titleMedium
+                            style = MaterialTheme.typography.titleMedium
                         )
 
                         Spacer(
@@ -149,15 +138,9 @@ fun AssemblyWorkspaceScreen() {
                         )
 
                         Text(
-                            text =
-                                "Добавьте секцию фермы " +
-                                "из библиотеки сверху",
-                            style =
-                                MaterialTheme
-                                    .typography
-                                    .bodyMedium
+                            text = "Добавьте секцию фермы из библиотеки сверху",
+                            style = MaterialTheme.typography.bodyMedium
                         )
-
                     }
 
                 } else {
@@ -181,18 +164,14 @@ private fun AssemblyInformation(
 
     val straightSections =
         assembly.elements.count {
-            it.type ==
-                AssemblyElementType.STRAIGHT
+            it.type == AssemblyElementType.STRAIGHT
         }
 
     val connectors =
         assembly.elements.count {
-            it.type ==
-                AssemblyElementType.CORNER ||
-            it.type ==
-                AssemblyElementType.T_JUNCTION ||
-            it.type ==
-                AssemblyElementType.X_JUNCTION
+            it.type == AssemblyElementType.CORNER ||
+            it.type == AssemblyElementType.T_JUNCTION ||
+            it.type == AssemblyElementType.X_JUNCTION
         }
 
     Surface(
@@ -207,8 +186,7 @@ private fun AssemblyInformation(
                     horizontal = 14.dp,
                     vertical = 8.dp
                 ),
-            horizontalArrangement =
-                Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
 
             Column {
@@ -218,14 +196,10 @@ private fun AssemblyInformation(
                 )
 
                 Text(
-                    text =
-                        "%.2f м".format(
-                            assembly.totalStraightLength
-                        ),
-                    style =
-                        MaterialTheme
-                            .typography
-                            .titleMedium
+                    text = "%.2f м".format(
+                        assembly.totalStraightLength
+                    ),
+                    style = MaterialTheme.typography.titleMedium
                 )
             }
 
@@ -236,12 +210,8 @@ private fun AssemblyInformation(
                 )
 
                 Text(
-                    text =
-                        straightSections.toString(),
-                    style =
-                        MaterialTheme
-                            .typography
-                            .titleMedium
+                    text = straightSections.toString(),
+                    style = MaterialTheme.typography.titleMedium
                 )
             }
 
@@ -252,12 +222,8 @@ private fun AssemblyInformation(
                 )
 
                 Text(
-                    text =
-                        connectors.toString(),
-                    style =
-                        MaterialTheme
-                            .typography
-                            .titleMedium
+                    text = connectors.toString(),
+                    style = MaterialTheme.typography.titleMedium
                 )
             }
 
@@ -268,14 +234,8 @@ private fun AssemblyInformation(
                 )
 
                 Text(
-                    text =
-                        assembly.elements
-                            .size
-                            .toString(),
-                    style =
-                        MaterialTheme
-                            .typography
-                            .titleMedium
+                    text = assembly.elements.size.toString(),
+                    style = MaterialTheme.typography.titleMedium
                 )
             }
         }
@@ -290,44 +250,31 @@ private fun AssemblyElementsPreview(
 
     Column(
         modifier = modifier,
-        verticalArrangement =
-            Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
 
         Text(
             text = "Элементы сборки",
-            style =
-                MaterialTheme
-                    .typography
-                    .titleMedium
+            style = MaterialTheme.typography.titleMedium
         )
 
-        assembly.elements.forEachIndexed {
-                index,
-                element ->
+        assembly.elements.forEachIndexed { index, element ->
 
             Surface(
-                modifier =
-                    Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 tonalElevation = 1.dp,
-                shape =
-                    MaterialTheme
-                        .shapes
-                        .small
+                shape = MaterialTheme.shapes.small
             ) {
 
                 Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(10.dp),
-                    horizontalArrangement =
-                        Arrangement.SpaceBetween
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
 
                     Text(
-                        text =
-                            "${index + 1}. ${element.name}"
+                        text = "${index + 1}. ${element.name}"
                     )
 
                     when (element.type) {
@@ -335,10 +282,9 @@ private fun AssemblyElementsPreview(
                         AssemblyElementType.STRAIGHT -> {
 
                             Text(
-                                text =
-                                    "%.2f м".format(
-                                        element.length
-                                    )
+                                text = "%.2f м".format(
+                                    element.length
+                                )
                             )
                         }
 
