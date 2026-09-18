@@ -1,474 +1,306 @@
 package com.trussload.calculator.assembly
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
-import kotlin.math.cos
-import kotlin.math.sin
-import kotlin.math.sqrt
+import androidx.compose.ui.unit.dp
+import kotlin.math.abs
 
-private const val PIXELS_PER_METER = 100f
-private const val HIT_DISTANCE = 55f
+data class AssemblyCanvasElement(
+    val id: Long,
+    val lengthMeters: Float,
+    val x: Float,
+    val y: Float
+)
 
 @Composable
 fun AssemblyCanvas(
-    project: AssemblyProject,
-    onProjectChange: (AssemblyProject) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var elements by remember {
+        mutableStateOf(
+            listOf(
+                AssemblyCanvasElement(
+                    id = 1L,
+                    lengthMeters = 2f,
+                    x = 180f,
+                    y = 300f
+                )
+            )
+        )
+    }
 
-    Canvas(
+    var selectedId by remember { mutableStateOf<Long?>(1L) }
+
+    Column(
         modifier = modifier
             .fillMaxSize()
+            .background(Color(0xFFF4F6F8))
+    ) {
 
-            // Нажатие — выбор элемента
-            .pointerInput(project) {
-                detectTapGestures { tap ->
+        Text(
+            text = "Конструктор фермы",
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.padding(16.dp)
+        )
 
-                    val element =
-                        findElementAt(
-                            project = project,
-                            point = tap
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+
+            Button(
+                onClick = {
+                    val nextId =
+                        (elements.maxOfOrNull { it.id } ?: 0L) + 1L
+
+                    elements = elements + AssemblyCanvasElement(
+                        id = nextId,
+                        lengthMeters = 2f,
+                        x = 180f,
+                        y = 300f + elements.size * 80f
+                    )
+
+                    selectedId = nextId
+                }
+            ) {
+                Text("+ 2 м")
+            }
+
+            Button(
+                onClick = {
+                    val nextId =
+                        (elements.maxOfOrNull { it.id } ?: 0L) + 1L
+
+                    elements = elements + AssemblyCanvasElement(
+                        id = nextId,
+                        lengthMeters = 3f,
+                        x = 180f,
+                        y = 300f + elements.size * 80f
+                    )
+
+                    selectedId = nextId
+                }
+            ) {
+                Text("+ 3 м")
+            }
+
+            OutlinedButton(
+                onClick = {
+                    val id = selectedId
+                    if (id != null) {
+                        elements = elements.filterNot {
+                            it.id == id
+                        }
+
+                        selectedId = null
+                    }
+                }
+            ) {
+                Text("Удалить")
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        Text(
+            text = "Секций: ${elements.size}   " +
+                    "Общая длина: ${
+                        "%.1f".format(
+                            elements.sumOf {
+                                it.lengthMeters.toDouble()
+                            }
                         )
+                    } м",
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
 
-                    onProjectChange(
-                        AssemblyEngine.select(
-                            project,
-                            element?.id
+        Spacer(Modifier.height(8.dp))
+
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .background(Color.White)
+                .pointerInput(elements, selectedId) {
+
+                    detectDragGestures(
+                        onDragStart = { touch ->
+
+                            selectedId = elements
+                                .minByOrNull { element ->
+                                    abs(touch.y - element.y)
+                                }
+                                ?.takeIf { element ->
+                                    abs(touch.y - element.y) < 70f
+                                }
+                                ?.id
+                        },
+
+                        onDrag = { change, dragAmount ->
+                            change.consume()
+
+                            val id = selectedId ?: return@detectDragGestures
+
+                            elements = elements.map { element ->
+
+                                if (element.id == id) {
+                                    element.copy(
+                                        x = element.x + dragAmount.x,
+                                        y = element.y + dragAmount.y
+                                    )
+                                } else {
+                                    element
+                                }
+                            }
+                        }
+                    )
+                }
+        ) {
+
+            // рабочая сетка
+            val grid = 50f
+
+            var x = 0f
+            while (x < size.width) {
+                drawLine(
+                    color = Color(0xFFE5E7EB),
+                    start = Offset(x, 0f),
+                    end = Offset(x, size.height),
+                    strokeWidth = 1f
+                )
+                x += grid
+            }
+
+            var y = 0f
+            while (y < size.height) {
+                drawLine(
+                    color = Color(0xFFE5E7EB),
+                    start = Offset(0f, y),
+                    end = Offset(size.width, y),
+                    strokeWidth = 1f
+                )
+                y += grid
+            }
+
+            elements.forEach { element ->
+
+                val pixelsPerMeter = 110f
+
+                val start = Offset(
+                    element.x,
+                    element.y
+                )
+
+                val end = Offset(
+                    element.x +
+                            element.lengthMeters *
+                            pixelsPerMeter,
+                    element.y
+                )
+
+                val selected =
+                    element.id == selectedId
+
+                // верхний пояс
+                drawLine(
+                    color = if (selected)
+                        Color(0xFF1565C0)
+                    else
+                        Color.DarkGray,
+                    start = start,
+                    end = end,
+                    strokeWidth = if (selected) 12f else 8f,
+                    cap = StrokeCap.Round
+                )
+
+                // нижний пояс
+                drawLine(
+                    color = if (selected)
+                        Color(0xFF1565C0)
+                    else
+                        Color.DarkGray,
+                    start = Offset(start.x, start.y + 45f),
+                    end = Offset(end.x, end.y + 45f),
+                    strokeWidth = if (selected) 12f else 8f,
+                    cap = StrokeCap.Round
+                )
+
+                // вертикали
+                drawLine(
+                    color = Color.DarkGray,
+                    start = start,
+                    end = Offset(start.x, start.y + 45f),
+                    strokeWidth = 5f
+                )
+
+                drawLine(
+                    color = Color.DarkGray,
+                    start = end,
+                    end = Offset(end.x, end.y + 45f),
+                    strokeWidth = 5f
+                )
+
+                // диагонали
+                val sections =
+                    (element.lengthMeters * 2)
+                        .toInt()
+                        .coerceAtLeast(1)
+
+                val sectionWidth =
+                    (end.x - start.x) / sections
+
+                repeat(sections) { index ->
+
+                    val x1 =
+                        start.x + index * sectionWidth
+
+                    val x2 =
+                        x1 + sectionWidth
+
+                    if (index % 2 == 0) {
+                        drawLine(
+                            color = Color.Gray,
+                            start = Offset(x1, start.y),
+                            end = Offset(x2, start.y + 45f),
+                            strokeWidth = 4f
                         )
+                    } else {
+                        drawLine(
+                            color = Color.Gray,
+                            start = Offset(x1, start.y + 45f),
+                            end = Offset(x2, start.y),
+                            strokeWidth = 4f
+                        )
+                    }
+                }
+
+                if (selected) {
+                    drawRect(
+                        color = Color(0xFF1565C0),
+                        topLeft = Offset(
+                            start.x - 12f,
+                            start.y - 12f
+                        ),
+                        size = androidx.compose.ui.geometry.Size(
+                            end.x - start.x + 24f,
+                            69f
+                        ),
+                        style = Stroke(width = 3f)
                     )
                 }
             }
-
-            // Перетаскивание
-            .pointerInput(project) {
-
-                var draggingId: Long? = null
-
-                detectDragGestures(
-
-                    onDragStart = { point ->
-
-                        draggingId =
-                            findElementAt(
-                                project,
-                                point
-                            )?.id
-
-                        draggingId?.let { id ->
-
-                            onProjectChange(
-                                AssemblyEngine.select(
-                                    project,
-                                    id
-                                )
-                            )
-                        }
-                    },
-
-                    onDrag = { change, dragAmount ->
-
-                        change.consume()
-
-                        draggingId?.let { id ->
-
-                            onProjectChange(
-                                AssemblyEngine.move(
-                                    project,
-                                    id,
-                                    dragAmount
-                                )
-                            )
-                        }
-                    },
-
-                    onDragEnd = {
-
-                        draggingId?.let { id ->
-
-                            onProjectChange(
-                                AssemblyEngine.snap(
-                                    project,
-                                    id,
-                                    PIXELS_PER_METER
-                                )
-                            )
-                        }
-
-                        draggingId = null
-                    },
-
-                    onDragCancel = {
-                        draggingId = null
-                    }
-                )
-            }
-    ) {
-
-        drawGrid()
-
-        project.elements.forEach { element ->
-
-            when (element.type) {
-
-                AssemblyElementType.STRAIGHT_TRUSS ->
-                    drawStraightTruss(element)
-
-                AssemblyElementType.CORNER_90 ->
-                    drawCorner90(element)
-
-                AssemblyElementType.CORNER_135 ->
-                    drawCorner135(element)
-
-                AssemblyElementType.T_JUNCTION ->
-                    drawTJunction(element)
-
-                AssemblyElementType.CROSS ->
-                    drawCross(element)
-
-                AssemblyElementType.SUPPORT ->
-                    drawSupport(element)
-
-                AssemblyElementType.LOAD_POINT ->
-                    drawLoadPoint(element)
-            }
         }
     }
-}
-
-private fun DrawScope.drawGrid() {
-
-    val step = 50f
-
-    var x = 0f
-
-    while (x <= size.width) {
-
-        drawLine(
-            color = Color(0xFFE7E7E7),
-            start = Offset(x, 0f),
-            end = Offset(x, size.height),
-            strokeWidth = 1f
-        )
-
-        x += step
-    }
-
-    var y = 0f
-
-    while (y <= size.height) {
-
-        drawLine(
-            color = Color(0xFFE7E7E7),
-            start = Offset(0f, y),
-            end = Offset(size.width, y),
-            strokeWidth = 1f
-        )
-
-        y += step
-    }
-}
-
-private fun DrawScope.drawStraightTruss(
-    element: AssemblyElement
-) {
-
-    val length =
-        element.lengthMeters *
-            PIXELS_PER_METER
-
-    val angle =
-        Math.toRadians(
-            element.rotationDegrees.toDouble()
-        )
-
-    val dx =
-        cos(angle).toFloat() *
-            length / 2f
-
-    val dy =
-        sin(angle).toFloat() *
-            length / 2f
-
-    val start =
-        element.position -
-            Offset(dx, dy)
-
-    val end =
-        element.position +
-            Offset(dx, dy)
-
-    val color =
-        if (element.selected)
-            Color(0xFF1565C0)
-        else
-            Color(0xFF303030)
-
-    // Основная ферма
-    drawLine(
-        color = color,
-        start = start,
-        end = end,
-        strokeWidth =
-            if (element.selected) 16f
-            else 12f,
-        cap = StrokeCap.Round
-    )
-
-    // Узлы соединения
-    drawCircle(
-        color = Color(0xFFFF9800),
-        radius = 10f,
-        center = start
-    )
-
-    drawCircle(
-        color = Color(0xFFFF9800),
-        radius = 10f,
-        center = end
-    )
-
-    if (element.selected) {
-
-        drawCircle(
-            color = Color(0xFF1565C0),
-            radius = 26f,
-            center = element.position,
-            style = Stroke(width = 4f)
-        )
-    }
-}
-
-private fun DrawScope.drawCorner90(
-    element: AssemblyElement
-) {
-
-    val p = element.position
-
-    val color =
-        if (element.selected)
-            Color(0xFF1565C0)
-        else
-            Color(0xFF424242)
-
-    drawLine(
-        color,
-        p,
-        p + Offset(70f, 0f),
-        12f,
-        StrokeCap.Round
-    )
-
-    drawLine(
-        color,
-        p,
-        p + Offset(0f, 70f),
-        12f,
-        StrokeCap.Round
-    )
-
-    drawCircle(
-        Color(0xFFFF9800),
-        10f,
-        p
-    )
-}
-
-private fun DrawScope.drawCorner135(
-    element: AssemblyElement
-) {
-
-    val p = element.position
-
-    val color =
-        if (element.selected)
-            Color(0xFF1565C0)
-        else
-            Color(0xFF424242)
-
-    drawLine(
-        color,
-        p,
-        p + Offset(70f, 0f),
-        12f,
-        StrokeCap.Round
-    )
-
-    drawLine(
-        color,
-        p,
-        p + Offset(-50f, 50f),
-        12f,
-        StrokeCap.Round
-    )
-}
-
-private fun DrawScope.drawTJunction(
-    element: AssemblyElement
-) {
-
-    val p = element.position
-
-    val color =
-        if (element.selected)
-            Color(0xFF1565C0)
-        else
-            Color(0xFF424242)
-
-    drawLine(
-        color,
-        p + Offset(-60f, 0f),
-        p + Offset(60f, 0f),
-        12f
-    )
-
-    drawLine(
-        color,
-        p,
-        p + Offset(0f, 70f),
-        12f
-    )
-}
-
-private fun DrawScope.drawCross(
-    element: AssemblyElement
-) {
-
-    val p = element.position
-
-    val color =
-        if (element.selected)
-            Color(0xFF1565C0)
-        else
-            Color(0xFF424242)
-
-    drawLine(
-        color,
-        p + Offset(-60f, 0f),
-        p + Offset(60f, 0f),
-        12f
-    )
-
-    drawLine(
-        color,
-        p + Offset(0f, -60f),
-        p + Offset(0f, 60f),
-        12f
-    )
-}
-
-private fun DrawScope.drawSupport(
-    element: AssemblyElement
-) {
-
-    val p = element.position
-
-    val color =
-        if (element.selected)
-            Color(0xFF1565C0)
-        else
-            Color(0xFF2E7D32)
-
-    drawLine(
-        color,
-        p,
-        p + Offset(-30f, 45f),
-        8f
-    )
-
-    drawLine(
-        color,
-        p,
-        p + Offset(30f, 45f),
-        8f
-    )
-
-    drawLine(
-        color,
-        p + Offset(-40f, 45f),
-        p + Offset(40f, 45f),
-        8f
-    )
-}
-
-private fun DrawScope.drawLoadPoint(
-    element: AssemblyElement
-) {
-
-    val p = element.position
-
-    val color =
-        if (element.selected)
-            Color(0xFF1565C0)
-        else
-            Color(0xFFD32F2F)
-
-    drawLine(
-        color,
-        p + Offset(0f, -50f),
-        p,
-        8f
-    )
-
-    drawLine(
-        color,
-        p,
-        p + Offset(-15f, -20f),
-        8f
-    )
-
-    drawLine(
-        color,
-        p,
-        p + Offset(15f, -20f),
-        8f
-    )
-}
-
-private fun findElementAt(
-    project: AssemblyProject,
-    point: Offset
-): AssemblyElement? {
-
-    return project.elements
-        .asReversed()
-        .minByOrNull { element ->
-
-            val dx =
-                point.x -
-                    element.position.x
-
-            val dy =
-                point.y -
-                    element.position.y
-
-            sqrt(dx * dx + dy * dy)
-        }
-        ?.takeIf { element ->
-
-            val dx =
-                point.x -
-                    element.position.x
-
-            val dy =
-                point.y -
-                    element.position.y
-
-            sqrt(dx * dx + dy * dy) <=
-                maxOf(
-                    HIT_DISTANCE,
-                    element.lengthMeters *
-                        PIXELS_PER_METER /
-                        2f
-                )
-        }
 }
