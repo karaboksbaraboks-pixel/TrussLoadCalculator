@@ -1,21 +1,41 @@
 package com.trussload.calculator.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.weight
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.trussload.calculator.assembly.*
+import com.trussload.calculator.assembly.AssemblyElementType
+import com.trussload.calculator.assembly.TrussAssembly
+import com.trussload.calculator.assembly.TrussComponentLibrary
+import com.trussload.calculator.assembly.addLibraryElement
 
 @Composable
 fun AssemblyWorkspaceScreen() {
 
-    var project by remember {
+    var assembly by remember {
         mutableStateOf(
-            AssemblyProject()
+            TrussAssembly(
+                name = "Новая сборка"
+            )
         )
     }
 
@@ -35,7 +55,6 @@ fun AssemblyWorkspaceScreen() {
             modifier = Modifier.fillMaxWidth(),
             tonalElevation = 2.dp
         ) {
-
             Column(
                 modifier = Modifier.padding(
                     horizontal = 14.dp,
@@ -56,41 +75,28 @@ fun AssemblyWorkspaceScreen() {
         }
 
         // -----------------------------
-        // БИБЛИОТЕКА
+        // БИБЛИОТЕКА ЭЛЕМЕНТОВ
         // -----------------------------
 
         TrussComponentLibrary(
             onAddElement = { item ->
 
                 val offsetIndex =
-                    project.elements.size % 6
+                    assembly.elements.size % 6
 
-                val startPosition =
-                    Offset(
-                        x = 180f +
-                            offsetIndex * 25f,
-                        y = 220f +
-                            offsetIndex * 25f
-                    )
+                val startX =
+                    180f + offsetIndex * 25f
 
-                project =
+                val startY =
+                    220f + offsetIndex * 25f
+
+                assembly =
                     addLibraryElement(
-                        project = project,
+                        assembly = assembly,
                         item = item,
-                        position = startPosition
+                        x = startX,
+                        y = startY
                     )
-            },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        // -----------------------------
-        // ПАНЕЛЬ ИНСТРУМЕНТОВ
-        // -----------------------------
-
-        AssemblyToolbar(
-            project = project,
-            onProjectChange = {
-                project = it
             },
             modifier = Modifier.fillMaxWidth()
         )
@@ -99,8 +105,8 @@ fun AssemblyWorkspaceScreen() {
         // ИНФОРМАЦИЯ О СБОРКЕ
         // -----------------------------
 
-        ProjectInformation(
-            project = project
+        AssemblyInformation(
+            assembly = assembly
         )
 
         // -----------------------------
@@ -122,21 +128,11 @@ fun AssemblyWorkspaceScreen() {
                     .background(Color.White)
             ) {
 
-                AssemblyCanvas(
-                    project = project,
-                    onProjectChange = {
-                        project = it
-                    },
-                    modifier = Modifier.fillMaxSize()
-                )
-
-                if (project.elements.isEmpty()) {
+                if (assembly.elements.isEmpty()) {
 
                     Column(
                         modifier = Modifier
-                            .align(
-                                androidx.compose.ui.Alignment.Center
-                            )
+                            .align(Alignment.Center)
                             .padding(30.dp)
                     ) {
 
@@ -161,42 +157,42 @@ fun AssemblyWorkspaceScreen() {
                                     .typography
                                     .bodyMedium
                         )
+
                     }
+
+                } else {
+
+                    AssemblyElementsPreview(
+                        assembly = assembly,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp)
+                    )
                 }
             }
         }
-
-        // -----------------------------
-        // ВЫБРАННЫЙ ЭЛЕМЕНТ
-        // -----------------------------
-
-        SelectedElementInformation(
-            project = project
-        )
     }
 }
 
 @Composable
-private fun ProjectInformation(
-    project: AssemblyProject
+private fun AssemblyInformation(
+    assembly: TrussAssembly
 ) {
 
     val straightSections =
-        project.elements.count {
+        assembly.elements.count {
             it.type ==
-                AssemblyElementType.STRAIGHT_TRUSS
+                AssemblyElementType.STRAIGHT
         }
 
     val connectors =
-        project.elements.count {
+        assembly.elements.count {
             it.type ==
-                AssemblyElementType.CORNER_90 ||
-            it.type ==
-                AssemblyElementType.CORNER_135 ||
+                AssemblyElementType.CORNER ||
             it.type ==
                 AssemblyElementType.T_JUNCTION ||
             it.type ==
-                AssemblyElementType.CROSS
+                AssemblyElementType.X_JUNCTION
         }
 
     Surface(
@@ -224,8 +220,7 @@ private fun ProjectInformation(
                 Text(
                     text =
                         "%.2f м".format(
-                            project
-                                .totalStraightLengthMeters
+                            assembly.totalStraightLength
                         ),
                     style =
                         MaterialTheme
@@ -274,7 +269,7 @@ private fun ProjectInformation(
 
                 Text(
                     text =
-                        project.elements
+                        assembly.elements
                             .size
                             .toString(),
                     style =
@@ -288,66 +283,86 @@ private fun ProjectInformation(
 }
 
 @Composable
-private fun SelectedElementInformation(
-    project: AssemblyProject
+private fun AssemblyElementsPreview(
+    assembly: TrussAssembly,
+    modifier: Modifier = Modifier
 ) {
 
-    val selected =
-        project.elements.firstOrNull {
-            it.selected
-        }
-
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        tonalElevation = 3.dp
+    Column(
+        modifier = modifier,
+        verticalArrangement =
+            Arrangement.spacedBy(8.dp)
     ) {
 
-        Column(
-            modifier = Modifier.padding(
-                horizontal = 14.dp,
-                vertical = 8.dp
-            )
-        ) {
+        Text(
+            text = "Элементы сборки",
+            style =
+                MaterialTheme
+                    .typography
+                    .titleMedium
+        )
 
-            if (selected == null) {
+        assembly.elements.forEachIndexed {
+                index,
+                element ->
 
-                Text(
-                    text =
-                        "Нажмите на элемент, " +
-                        "чтобы выбрать его",
-                    style =
-                        MaterialTheme
-                            .typography
-                            .bodySmall
-                )
+            Surface(
+                modifier =
+                    Modifier.fillMaxWidth(),
+                tonalElevation = 1.dp,
+                shape =
+                    MaterialTheme
+                        .shapes
+                        .small
+            ) {
 
-            } else {
-
-                Text(
-                    text =
-                        "Выбрано: ${selected.name}",
-                    style =
-                        MaterialTheme
-                            .typography
-                            .titleSmall
-                )
-
-                if (
-                    selected.type ==
-                    AssemblyElementType.STRAIGHT_TRUSS
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(10.dp),
+                    horizontalArrangement =
+                        Arrangement.SpaceBetween
                 ) {
 
                     Text(
                         text =
-                            "Длина: " +
-                            "${selected.lengthMeters} м   " +
-                            "Поворот: " +
-                            "${selected.rotationDegrees.toInt()}°",
-                        style =
-                            MaterialTheme
-                                .typography
-                                .bodySmall
+                            "${index + 1}. ${element.name}"
                     )
+
+                    when (element.type) {
+
+                        AssemblyElementType.STRAIGHT -> {
+
+                            Text(
+                                text =
+                                    "%.2f м".format(
+                                        element.length
+                                    )
+                            )
+                        }
+
+                        AssemblyElementType.CORNER -> {
+
+                            Text(
+                                text = "Угол"
+                            )
+                        }
+
+                        AssemblyElementType.T_JUNCTION -> {
+
+                            Text(
+                                text = "T"
+                            )
+                        }
+
+                        AssemblyElementType.X_JUNCTION -> {
+
+                            Text(
+                                text = "X"
+                            )
+                        }
+                    }
                 }
             }
         }
