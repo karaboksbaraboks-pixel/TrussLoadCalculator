@@ -19,22 +19,23 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             MaterialTheme {
-                TrussLoadCalculator()
+                TrussCalculator()
             }
         }
     }
 }
 
 @Composable
-fun TrussLoadCalculator() {
+fun TrussCalculator() {
 
-    var span by remember { mutableStateOf("") }
-    var load by remember { mutableStateOf("") }
+    var span by remember { mutableStateOf("6") }
+    var load by remember { mutableStateOf("600") }
     var result by remember { mutableStateOf("") }
 
     Surface(
         modifier = Modifier.fillMaxSize()
     ) {
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -44,64 +45,82 @@ fun TrussLoadCalculator() {
 
             Text(
                 text = "Truss Load Calculator",
-                style = MaterialTheme.typography.headlineMedium
+                style = MaterialTheme.typography.headlineLarge
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
             OutlinedTextField(
                 value = span,
                 onValueChange = { span = it },
-                label = { Text("Длина пролёта, м") },
+                label = {
+                    Text("Длина пролёта, м")
+                },
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Decimal
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             OutlinedTextField(
                 value = load,
                 onValueChange = { load = it },
-                label = { Text("Нагрузка, кг") },
+                label = {
+                    Text("Общая нагрузка, кг")
+                },
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Decimal
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
             Button(
                 onClick = {
-                    val spanValue = span.replace(",", ".").toDoubleOrNull()
-                    val loadValue = load.replace(",", ".").toDoubleOrNull()
 
-                    result = if (
-                        spanValue != null &&
-                        loadValue != null &&
-                        spanValue > 0
-                    ) {
-                        val loadPerMeter = loadValue / spanValue
+                    val spanValue =
+                        span.replace(",", ".").toDoubleOrNull()
 
-                        "Нагрузка на метр: %.2f кг/м"
-                            .format(loadPerMeter)
-                    } else {
-                        "Введите корректные значения"
-                    }
+                    val loadValue =
+                        load.replace(",", ".").toDoubleOrNull()
+
+                    result =
+                        if (
+                            spanValue != null &&
+                            loadValue != null &&
+                            spanValue > 0
+                        ) {
+
+                            val loadPerMeter =
+                                loadValue / spanValue
+
+                            "Нагрузка на метр: %.2f кг/м"
+                                .format(loadPerMeter)
+
+                        } else {
+
+                            "Проверьте введённые данные"
+                        }
                 },
-                modifier = Modifier.fillMaxWidth()
+
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
             ) {
-                Text("Рассчитать")
+
+                Text("РАССЧИТАТЬ")
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
             if (result.isNotEmpty()) {
+
                 Text(
                     text = result,
-                    style = MaterialTheme.typography.titleLarge
+                    style = MaterialTheme.typography.headlineSmall
                 )
             }
         }
