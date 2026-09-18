@@ -2,361 +2,392 @@ package com.trussload.calculator.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
-import com.trussload.calculator.assembly.*
+import androidx.compose.ui.unit.sp
+import kotlin.math.cos
+import kotlin.math.sin
+
+data class AssemblyElement(
+    val id: Int,
+    val lengthMeters: Float,
+    val x: Float,
+    val y: Float,
+    val rotation: Float = 0f
+)
 
 @Composable
 fun TrussAssemblyScreen() {
 
-    var assembly by remember {
-        mutableStateOf(TrussAssembly())
+    var elements by remember {
+        mutableStateOf(listOf<AssemblyElement>())
+    }
+
+    var selectedId by remember {
+        mutableStateOf<Int?>(null)
+    }
+
+    var nextId by remember {
+        mutableIntStateOf(1)
     }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .background(Color(0xFFF4F4F4))
     ) {
 
         Text(
             text = "Конструктор фермы",
-            style = MaterialTheme.typography.headlineMedium
-        )
-
-        Text(
-            text = "Секции",
-            style = MaterialTheme.typography.titleLarge
+            fontSize = 22.sp,
+            modifier = Modifier.padding(12.dp)
         )
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
 
-            StandardTrussElements.straightSections.forEach { template ->
+            listOf(
+                0.5f,
+                1f,
+                2f,
+                3f,
+                4f
+            ).forEach { length ->
 
-                ElevatedCard(
-                    modifier = Modifier
-                        .width(120.dp)
-                        .clickable {
-
-                            val newElement =
-                                template.copy(
-                                    id = java.util.UUID
-                                        .randomUUID()
-                                        .toString()
-                                )
-
-                            assembly = assembly.copy(
-                                elements =
-                                    assembly.elements +
-                                        newElement
-                            )
-                        }
-                ) {
-
-                    Column(
-                        modifier = Modifier.padding(12.dp)
-                    ) {
-
-                        Text(template.name)
-
-                        Text(
-                            text = "${template.length} м",
-                            style =
-                                MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-            }
-        }
-
-        Text(
-            text = "Соединители",
-            style = MaterialTheme.typography.titleLarge
-        )
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-
-            StandardTrussElements.connectors.forEach { template ->
-
-                OutlinedButton(
+                Button(
                     onClick = {
 
-                        val newElement =
-                            template.copy(
-                                id = java.util.UUID
-                                    .randomUUID()
-                                    .toString()
-                            )
-
-                        assembly = assembly.copy(
-                            elements =
-                                assembly.elements +
-                                    newElement
+                        elements = elements + AssemblyElement(
+                            id = nextId,
+                            lengthMeters = length,
+                            x = 200f,
+                            y = 300f + nextId * 20f
                         )
+
+                        selectedId = nextId
+                        nextId++
                     }
                 ) {
-                    Text(template.name)
+                    Text("${length} м")
                 }
             }
         }
 
-        Text(
-            text = "Рабочая область",
-            style = MaterialTheme.typography.titleLarge
+        Spacer(
+            modifier = Modifier.height(8.dp)
         )
 
-        Card(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(280.dp)
+                .padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
 
-            AssemblyCanvas(
-                assembly = assembly,
-                modifier = Modifier.fillMaxSize()
-            )
-        }
+            Button(
+                enabled = selectedId != null,
+                onClick = {
 
-        Text(
-            text =
-                "Прямая длина: " +
-                    "%.2f м".format(
-                        assembly.totalStraightLength
-                    )
-        )
+                    val id = selectedId ?: return@Button
 
-        Text(
-            text =
-                "Элементов: ${assembly.elements.size}"
-        )
+                    elements = elements.map {
 
-        if (assembly.elements.isNotEmpty()) {
-
-            Text(
-                text = "Состав сборки",
-                style = MaterialTheme.typography.titleLarge
-            )
-
-            assembly.elements.forEachIndexed {
-                    index,
-                    element ->
-
-                Card(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        horizontalArrangement =
-                            Arrangement.SpaceBetween
-                    ) {
-
-                        Column(
-                            modifier = Modifier.weight(1f)
-                        ) {
-
-                            Text(
-                                text =
-                                    "${index + 1}. ${element.name}"
+                        if (it.id == id) {
+                            it.copy(
+                                rotation = it.rotation + 15f
                             )
-
-                            if (
-                                element.type ==
-                                AssemblyElementType.STRAIGHT
-                            ) {
-                                Text(
-                                    text =
-                                        "${element.length} м",
-                                    style =
-                                        MaterialTheme
-                                            .typography
-                                            .bodySmall
-                                )
-                            }
-                        }
-
-                        TextButton(
-                            onClick = {
-
-                                assembly =
-                                    assembly.copy(
-                                        elements =
-                                            assembly.elements
-                                                .filterNot {
-                                                    it.id ==
-                                                        element.id
-                                                }
-                                    )
-                            }
-                        ) {
-                            Text("Удалить")
+                        } else {
+                            it
                         }
                     }
                 }
+            ) {
+                Text("↻ 15°")
+            }
+
+            Button(
+                enabled = selectedId != null,
+                onClick = {
+
+                    val id = selectedId ?: return@Button
+
+                    elements = elements.map {
+
+                        if (it.id == id) {
+                            it.copy(
+                                rotation = it.rotation + 90f
+                            )
+                        } else {
+                            it
+                        }
+                    }
+                }
+            ) {
+                Text("↻ 90°")
+            }
+
+            Button(
+                enabled = selectedId != null,
+                onClick = {
+
+                    val id = selectedId ?: return@Button
+
+                    elements =
+                        elements.filterNot {
+                            it.id == id
+                        }
+
+                    selectedId = null
+                }
+            ) {
+                Text("Удалить")
             }
 
             OutlinedButton(
+                enabled = elements.isNotEmpty(),
                 onClick = {
-                    assembly = TrussAssembly()
-                },
-                modifier = Modifier.fillMaxWidth()
+                    elements = emptyList()
+                    selectedId = null
+                }
             ) {
-                Text("Очистить сборку")
+                Text("Очистить")
+            }
+        }
+
+        Spacer(
+            modifier = Modifier.height(8.dp)
+        )
+
+        Text(
+            text =
+                "Секций: ${elements.size}   " +
+                "Общая длина: " +
+                "%.1f".format(
+                    elements.sumOf {
+                        it.lengthMeters.toDouble()
+                    }
+                ) +
+                " м",
+            modifier = Modifier.padding(
+                horizontal = 12.dp,
+                vertical = 4.dp
+            )
+        )
+
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .background(Color.White)
+                .pointerInput(elements, selectedId) {
+
+                    detectDragGestures(
+
+                        onDragStart = { position ->
+
+                            selectedId =
+                                findElementAt(
+                                    position = position,
+                                    elements = elements
+                                )
+                        },
+
+                        onDrag = { change, dragAmount ->
+
+                            change.consume()
+
+                            val id =
+                                selectedId
+                                    ?: return@detectDragGestures
+
+                            elements = elements.map {
+
+                                if (it.id == id) {
+
+                                    it.copy(
+                                        x = it.x + dragAmount.x,
+                                        y = it.y + dragAmount.y
+                                    )
+
+                                } else {
+                                    it
+                                }
+                            }
+                        }
+                    )
+                }
+        ) {
+
+            // Сетка
+
+            val grid = 50f
+
+            var gx = 0f
+
+            while (gx < size.width) {
+
+                drawLine(
+                    color = Color(0xFFE8E8E8),
+                    start = Offset(gx, 0f),
+                    end = Offset(gx, size.height),
+                    strokeWidth = 1f
+                )
+
+                gx += grid
+            }
+
+            var gy = 0f
+
+            while (gy < size.height) {
+
+                drawLine(
+                    color = Color(0xFFE8E8E8),
+                    start = Offset(0f, gy),
+                    end = Offset(size.width, gy),
+                    strokeWidth = 1f
+                )
+
+                gy += grid
+            }
+
+            // Элементы фермы
+
+            elements.forEach { element ->
+
+                val selected =
+                    element.id == selectedId
+
+                val radians =
+                    Math.toRadians(
+                        element.rotation.toDouble()
+                    )
+
+                val pixelLength =
+                    element.lengthMeters * 120f
+
+                val dx =
+                    (cos(radians) * pixelLength / 2f)
+                        .toFloat()
+
+                val dy =
+                    (sin(radians) * pixelLength / 2f)
+                        .toFloat()
+
+                val start =
+                    Offset(
+                        element.x - dx,
+                        element.y - dy
+                    )
+
+                val end =
+                    Offset(
+                        element.x + dx,
+                        element.y + dy
+                    )
+
+                val color =
+                    if (selected) {
+                        Color(0xFFFF9800)
+                    } else {
+                        Color(0xFF1565C0)
+                    }
+
+                // Основная секция
+
+                drawLine(
+                    color = color,
+                    start = start,
+                    end = end,
+                    strokeWidth = 18f,
+                    cap = StrokeCap.Round
+                )
+
+                // Центральная линия
+
+                drawLine(
+                    color = Color.White,
+                    start = start,
+                    end = end,
+                    strokeWidth = 2f
+                )
+
+                // Узлы соединения
+
+                drawCircle(
+                    color = Color.Red,
+                    radius = 8f,
+                    center = start
+                )
+
+                drawCircle(
+                    color = Color.Red,
+                    radius = 8f,
+                    center = end
+                )
+
+                if (selected) {
+
+                    drawCircle(
+                        color = Color(0x55000000),
+                        radius = 25f,
+                        center = Offset(
+                            element.x,
+                            element.y
+                        )
+                    )
+                }
             }
         }
     }
 }
 
-@Composable
-private fun AssemblyCanvas(
-    assembly: TrussAssembly,
-    modifier: Modifier = Modifier
-) {
+private fun findElementAt(
+    position: Offset,
+    elements: List<AssemblyElement>
+): Int? {
 
-    Canvas(
-        modifier = modifier
-            .background(
-                MaterialTheme.colorScheme.surfaceVariant
-            )
-    ) {
+    var closestId: Int? = null
+    var closestDistance = Float.MAX_VALUE
 
-        if (assembly.elements.isEmpty()) {
-            return@Canvas
-        }
+    elements.forEach { element ->
 
-        var cursorX = 40f
-        var cursorY = size.height / 2f
+        val dx =
+            position.x - element.x
 
-        val usableWidth =
-            (size.width - 80f).coerceAtLeast(1f)
+        val dy =
+            position.y - element.y
 
-        val totalLength =
-            assembly.totalStraightLength
-                .coerceAtLeast(1.0)
+        val distance =
+            dx * dx + dy * dy
 
-        val scale =
-            (usableWidth / totalLength.toFloat())
-                .coerceAtMost(130f)
+        val selectionRadius =
+            element.lengthMeters * 70f + 50f
 
-        var directionX = 1f
-        var directionY = 0f
+        if (
+            distance <
+            selectionRadius * selectionRadius &&
+            distance < closestDistance
+        ) {
 
-        assembly.elements.forEach { element ->
-
-            when (element.type) {
-
-                AssemblyElementType.STRAIGHT -> {
-
-                    val visualLength =
-                        element.length.toFloat() *
-                            scale
-
-                    val endX =
-                        cursorX +
-                            visualLength *
-                            directionX
-
-                    val endY =
-                        cursorY +
-                            visualLength *
-                            directionY
-
-                    drawLine(
-                        color = Color(0xFF333333),
-                        start = Offset(
-                            cursorX,
-                            cursorY
-                        ),
-                        end = Offset(
-                            endX,
-                            endY
-                        ),
-                        strokeWidth = 14f,
-                        cap = StrokeCap.Round
-                    )
-
-                    drawLine(
-                        color = Color(0xFF777777),
-                        start = Offset(
-                            cursorX,
-                            cursorY - 12f
-                        ),
-                        end = Offset(
-                            endX,
-                            endY - 12f
-                        ),
-                        strokeWidth = 4f
-                    )
-
-                    cursorX = endX
-                    cursorY = endY
-                }
-
-                AssemblyElementType.CORNER -> {
-
-                    drawCircle(
-                        color = Color(0xFFEF6C00),
-                        radius = 15f,
-                        center = Offset(
-                            cursorX,
-                            cursorY
-                        )
-                    )
-
-                    val oldX = directionX
-
-                    directionX = -directionY
-                    directionY = oldX
-                }
-
-                AssemblyElementType.T_JUNCTION -> {
-
-                    drawCircle(
-                        color = Color(0xFF1565C0),
-                        radius = 17f,
-                        center = Offset(
-                            cursorX,
-                            cursorY
-                        )
-                    )
-                }
-
-                AssemblyElementType.X_JUNCTION -> {
-
-                    drawCircle(
-                        color = Color(0xFF7B1FA2),
-                        radius = 18f,
-                        center = Offset(
-                            cursorX,
-                            cursorY
-                        )
-                    )
-                }
-            }
+            closestDistance = distance
+            closestId = element.id
         }
     }
+
+    return closestId
 }
