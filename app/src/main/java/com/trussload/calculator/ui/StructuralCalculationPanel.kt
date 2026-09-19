@@ -1,5 +1,6 @@
 package com.trussload.calculator.ui
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,40 +9,41 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.trussload.calculator.assembly.TrussAssembly
 import com.trussload.calculator.calculation.AssemblyStructuralConverter
+import com.trussload.calculator.calculation.SupportType
+import com.trussload.calculator.calculation.setSupport
+import com.trussload.calculator.calculation.supportType
 import com.trussload.calculator.models.StructuralModel
+import com.trussload.calculator.models.StructuralNode
 
 // ============================================================
 // ПАНЕЛЬ РАСЧЁТНОЙ МОДЕЛИ
 //
-// Назначение:
+// ЭТАП:
 //
-// TrussAssembly
-//      ↓
-// AssemblyStructuralConverter
-//      ↓
-// StructuralModel
+// - преобразование визуальной сборки в StructuralModel;
+// - выбор расчётного узла;
+// - назначение опоры;
+// - снятие опоры;
+// - отображение состояния выбранного узла.
 //
-// На этом этапе панель:
-//
-// - создаёт расчётную модель;
-// - показывает количество узлов;
-// - показывает количество стержней;
-// - показывает количество нагрузок;
-// - показывает количество закреплений;
-// - выполняет базовую проверку модели.
-//
-// Назначение опор и нагрузок будем подключать следующим шагом.
+// На следующем этапе выбор узла будет выполняться
+// непосредственно касанием по рабочему полю.
 // ============================================================
 
 @Composable
@@ -50,10 +52,68 @@ fun StructuralCalculationPanel(
     modifier: Modifier = Modifier
 ) {
 
-    val structuralModel =
-        AssemblyStructuralConverter.convert(
-            assembly = assembly
+    // ========================================================
+    // РАСЧЁТНАЯ МОДЕЛЬ
+    // ========================================================
+
+    var structuralModel by remember {
+        mutableStateOf(
+            AssemblyStructuralConverter.convert(
+                assembly = assembly
+            )
         )
+    }
+
+    // ========================================================
+    // ВЫБРАННЫЙ УЗЕЛ
+    // ========================================================
+
+    var selectedNodeIndex by remember {
+        mutableIntStateOf(0)
+    }
+
+    // ========================================================
+    // ЕСЛИ ВИЗУАЛЬНАЯ СБОРКА ИЗМЕНИЛАСЬ
+    //
+    // Перестраиваем StructuralModel.
+    //
+    // На данном этапе опоры относятся к текущей расчётной
+    // геометрии. Позже вынесем расчётное состояние выше,
+    // чтобы оно полностью синхронизировалось с рабочим полем.
+    // ========================================================
+
+    LaunchedEffect(
+        assembly.elements,
+        assembly.connections
+    ) {
+
+        structuralModel =
+            AssemblyStructuralConverter.convert(
+                assembly = assembly
+            )
+
+        if (
+            structuralModel.nodes.isEmpty()
+        ) {
+
+            selectedNodeIndex = 0
+
+        } else if (
+            selectedNodeIndex >
+            structuralModel.nodes.lastIndex
+        ) {
+
+            selectedNodeIndex =
+                structuralModel.nodes.lastIndex
+        }
+    }
+
+    val selectedNode =
+        structuralModel
+            .nodes
+            .getOrNull(
+                selectedNodeIndex
+            )
 
     Card(
         modifier = modifier
@@ -101,23 +161,136 @@ fun StructuralCalculationPanel(
             )
 
             // =================================================
-            // СОСТОЯНИЕ МОДЕЛИ
+            // СОСТОЯНИЕ ГЕОМЕТРИИ
             // =================================================
 
             StructuralModelState(
                 model = structuralModel
             )
 
+            // =================================================
+            // ВЫБОР УЗЛА
+            // =================================================
+
+            if (
+                structuralModel
+                    .nodes
+                    .isNotEmpty()
+            ) {
+
+                Spacer(
+                    modifier =
+                        Modifier.height(12.dp)
+                )
+
+                NodeSelector(
+                    model = structuralModel,
+                    selectedNodeIndex =
+                        selectedNodeIndex,
+                    onPrevious = {
+
+                        if (
+                            structuralModel
+                                .nodes
+                                .isNotEmpty()
+                        ) {
+
+                            selectedNodeIndex =
+                                if (
+                                    selectedNodeIndex <= 0
+                                ) {
+
+                                    structuralModel
+                                        .nodes
+                                        .lastIndex
+
+                                } else {
+
+                                    selectedNodeIndex - 1
+                                }
+                        }
+                    },
+                    onNext = {
+
+                        if (
+                            structuralModel
+                                .nodes
+                                .isNotEmpty()
+                        ) {
+
+                            selectedNodeIndex =
+                                if (
+                                    selectedNodeIndex >=
+                                    structuralModel
+                                        .nodes
+                                        .lastIndex
+                                ) {
+
+                                    0
+
+                                } else {
+
+                                    selectedNodeIndex + 1
+                                }
+                        }
+                    }
+                )
+
+                // =============================================
+                // ДАННЫЕ ВЫБРАННОГО УЗЛА
+                // =============================================
+
+                if (
+                    selectedNode != null
+                ) {
+
+                    Spacer(
+                        modifier =
+                            Modifier.height(10.dp)
+                    )
+
+                    SelectedNodeInformation(
+                        node = selectedNode,
+                        index = selectedNodeIndex
+                    )
+
+                    Spacer(
+                        modifier =
+                            Modifier.height(10.dp)
+                    )
+
+                    // =========================================
+                    // ОПОРЫ
+                    // =========================================
+
+                    SupportControls(
+                        selectedNode = selectedNode,
+                        onSupportSelected = {
+                                supportType ->
+
+                            structuralModel =
+                                structuralModel
+                                    .setSupport(
+                                        nodeId =
+                                            selectedNode.id,
+                                        supportType =
+                                            supportType
+                                    )
+                        }
+                    )
+                }
+            }
+
             Spacer(
                 modifier =
-                    Modifier.height(10.dp)
+                    Modifier.height(12.dp)
             )
 
             // =================================================
-            // БУДУЩИЕ ИНСТРУМЕНТЫ
+            // РАСЧЁТ
             // =================================================
 
-            StructuralCalculationTools(
+            CalculationControls(
                 model = structuralModel
             )
         }
@@ -125,7 +298,7 @@ fun StructuralCalculationPanel(
 }
 
 // ============================================================
-// СТАТИСТИКА РАСЧЁТНОЙ МОДЕЛИ
+// СТАТИСТИКА
 // ============================================================
 
 @Composable
@@ -218,12 +391,6 @@ private fun StructuralStatisticValue(
 
 // ============================================================
 // СОСТОЯНИЕ МОДЕЛИ
-//
-// Здесь специально не вызываем пока общий
-// validateForCalculation(), чтобы этот UI-файл
-// не зависел от extension-функций опор/нагрузок.
-//
-// Полную проверку подключим вместе с запуском solver.
 // ============================================================
 
 @Composable
@@ -260,33 +427,279 @@ private fun StructuralModelState(
 }
 
 // ============================================================
-// ИНСТРУМЕНТЫ РАСЧЁТА
-//
-// Кнопки пока являются визуальной подготовкой.
-//
-// На следующем этапе:
-//
-// ОПОРЫ
-//     выбор узла
-//     PINNED / X_ONLY / Y_ONLY
-//
-// НАГРУЗКА
-//     значение
-//     кг / кН
-//     направление
-//
-// РАСЧЁТ
-//     Truss2DSolver
+// ВЫБОР УЗЛА
 // ============================================================
 
 @Composable
-private fun StructuralCalculationTools(
+private fun NodeSelector(
+    model: StructuralModel,
+    selectedNodeIndex: Int,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit
+) {
+
+    Column(
+        modifier =
+            Modifier.fillMaxWidth()
+    ) {
+
+        Text(
+            text = "Выбор узла",
+            style =
+                MaterialTheme
+                    .typography
+                    .titleSmall
+        )
+
+        Spacer(
+            modifier =
+                Modifier.height(6.dp)
+        )
+
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(
+                        rememberScrollState()
+                    ),
+            horizontalArrangement =
+                Arrangement.spacedBy(8.dp)
+        ) {
+
+            OutlinedButton(
+                onClick = onPrevious
+            ) {
+
+                Text(
+                    text = "← Предыдущий"
+                )
+            }
+
+            Text(
+                text =
+                    "Узел ${selectedNodeIndex + 1} / ${model.nodes.size}",
+                modifier =
+                    Modifier.padding(
+                        horizontal = 8.dp,
+                        vertical = 12.dp
+                    ),
+                style =
+                    MaterialTheme
+                        .typography
+                        .bodyMedium
+            )
+
+            OutlinedButton(
+                onClick = onNext
+            ) {
+
+                Text(
+                    text = "Следующий →"
+                )
+            }
+        }
+    }
+}
+
+// ============================================================
+// ИНФОРМАЦИЯ О ВЫБРАННОМ УЗЛЕ
+// ============================================================
+
+@Composable
+private fun SelectedNodeInformation(
+    node: StructuralNode,
+    index: Int
+) {
+
+    Column(
+        modifier =
+            Modifier.fillMaxWidth()
+    ) {
+
+        Text(
+            text =
+                "Узел ${index + 1}",
+            style =
+                MaterialTheme
+                    .typography
+                    .titleSmall
+        )
+
+        Spacer(
+            modifier =
+                Modifier.height(4.dp)
+        )
+
+        Text(
+            text =
+                "X: ${formatCoordinate(node.x)} м    Y: ${formatCoordinate(node.y)} м",
+            style =
+                MaterialTheme
+                    .typography
+                    .bodySmall
+        )
+
+        Text(
+            text =
+                "Опора: ${supportTitle(node.supportType)}",
+            style =
+                MaterialTheme
+                    .typography
+                    .bodySmall
+        )
+    }
+}
+
+// ============================================================
+// УПРАВЛЕНИЕ ОПОРАМИ
+// ============================================================
+
+@Composable
+private fun SupportControls(
+    selectedNode: StructuralNode,
+    onSupportSelected:
+        (SupportType) -> Unit
+) {
+
+    Column(
+        modifier =
+            Modifier.fillMaxWidth()
+    ) {
+
+        Text(
+            text = "Опора узла",
+            style =
+                MaterialTheme
+                    .typography
+                    .titleSmall
+        )
+
+        Spacer(
+            modifier =
+                Modifier.height(6.dp)
+        )
+
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(
+                        rememberScrollState()
+                    ),
+            horizontalArrangement =
+                Arrangement.spacedBy(8.dp)
+        ) {
+
+            SupportButton(
+                title = "Без опоры",
+                selected =
+                    selectedNode.supportType ==
+                        SupportType.FREE,
+                onClick = {
+
+                    onSupportSelected(
+                        SupportType.FREE
+                    )
+                }
+            )
+
+            SupportButton(
+                title = "X",
+                selected =
+                    selectedNode.supportType ==
+                        SupportType.X_ONLY,
+                onClick = {
+
+                    onSupportSelected(
+                        SupportType.X_ONLY
+                    )
+                }
+            )
+
+            SupportButton(
+                title = "Y",
+                selected =
+                    selectedNode.supportType ==
+                        SupportType.Y_ONLY,
+                onClick = {
+
+                    onSupportSelected(
+                        SupportType.Y_ONLY
+                    )
+                }
+            )
+
+            SupportButton(
+                title = "Шарнир",
+                selected =
+                    selectedNode.supportType ==
+                        SupportType.PINNED,
+                onClick = {
+
+                    onSupportSelected(
+                        SupportType.PINNED
+                    )
+                }
+            )
+        }
+    }
+}
+
+// ============================================================
+// КНОПКА ТИПА ОПОРЫ
+// ============================================================
+
+@Composable
+private fun SupportButton(
+    title: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+
+    if (selected) {
+
+        Button(
+            onClick = onClick
+        ) {
+
+            Text(
+                text = title
+            )
+        }
+
+    } else {
+
+        OutlinedButton(
+            onClick = onClick
+        ) {
+
+            Text(
+                text = title
+            )
+        }
+    }
+}
+
+// ============================================================
+// ПАНЕЛЬ РАСЧЁТА
+// ============================================================
+
+@Composable
+private fun CalculationControls(
     model: StructuralModel
 ) {
 
     val geometryAvailable =
         model.nodes.isNotEmpty() &&
             model.members.isNotEmpty()
+
+    val hasSupport =
+        model.nodes.any { node ->
+
+            node.supportX ||
+                node.supportY
+        }
 
     Column(
         modifier =
@@ -320,9 +733,8 @@ private fun StructuralCalculationTools(
             OutlinedButton(
                 onClick = {
                     /*
-                     * Подключим выбор
-                     * и назначение опор
-                     * следующим шагом.
+                     * Добавление нагрузки
+                     * подключим следующим этапом.
                      */
                 },
                 enabled =
@@ -330,32 +742,15 @@ private fun StructuralCalculationTools(
             ) {
 
                 Text(
-                    text = "Опора"
-                )
-            }
-
-            OutlinedButton(
-                onClick = {
-                    /*
-                     * Подключим создание
-                     * сосредоточенной нагрузки.
-                     */
-                },
-                enabled =
-                    geometryAvailable
-            ) {
-
-                Text(
-                    text = "Нагрузка"
+                    text = "Добавить нагрузку"
                 )
             }
 
             Button(
                 onClick = {
                     /*
-                     * Здесь будет:
-                     *
-                     * Truss2DSolver.solve(...)
+                     * Здесь будет запуск
+                     * Truss2DSolver.
                      */
                 },
                 enabled = false
@@ -367,21 +762,81 @@ private fun StructuralCalculationTools(
             }
         }
 
-        if (geometryAvailable) {
+        Spacer(
+            modifier =
+                Modifier.height(6.dp)
+        )
 
-            Spacer(
-                modifier =
-                    Modifier.height(6.dp)
-            )
+        val statusText =
+            when {
 
-            Text(
-                text =
-                    "Следующий этап: назначение опор и нагрузок на расчётные узлы.",
-                style =
-                    MaterialTheme
-                        .typography
-                        .bodySmall
-            )
-        }
+                !geometryAvailable -> {
+
+                    "Сначала создайте расчётную геометрию."
+                }
+
+                !hasSupport -> {
+
+                    "Назначьте опоры."
+                }
+
+                model.loads.isEmpty() -> {
+
+                    "Опоры назначены. Следующий этап — нагрузки."
+                }
+
+                else -> {
+
+                    "Модель подготовлена к проверке."
+                }
+            }
+
+        Text(
+            text = statusText,
+            style =
+                MaterialTheme
+                    .typography
+                    .bodySmall
+        )
     }
+}
+
+// ============================================================
+// НАЗВАНИЕ ОПОРЫ
+// ============================================================
+
+private fun supportTitle(
+    supportType: SupportType
+): String {
+
+    return when (
+        supportType
+    ) {
+
+        SupportType.FREE ->
+            "нет"
+
+        SupportType.X_ONLY ->
+            "закрепление X"
+
+        SupportType.Y_ONLY ->
+            "закрепление Y"
+
+        SupportType.PINNED ->
+            "шарнирная"
+    }
+}
+
+// ============================================================
+// ФОРМАТ КООРДИНАТ
+// ============================================================
+
+private fun formatCoordinate(
+    value: Double
+): String {
+
+    return String.format(
+        "%.3f",
+        value
+    )
 }
