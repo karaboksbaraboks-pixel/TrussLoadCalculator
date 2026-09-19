@@ -25,15 +25,15 @@ data class LibraryItem(
     val title: String,
     val type: AssemblyElementType,
 
-    // Размеры
+    // Размеры, м
     val length: Double = 0.0,
     val width: Double = 0.29,
     val height: Double = 0.29,
 
-    // Масса
+    // Масса, кг
     val weight: Double = 0.0,
 
-    // Дополнительные данные
+    // Информация о производителе
     val manufacturer: String = "",
     val series: String = "",
     val article: String = "",
@@ -47,69 +47,70 @@ data class LibraryItem(
 // СТАНДАРТНАЯ БИБЛИОТЕКА
 // ============================================================
 
-val defaultTrussLibrary = listOf(
+val defaultTrussLibrary =
+    listOf(
 
-    // --------------------------------------------------------
-    // ПРЯМЫЕ СЕКЦИИ
-    // --------------------------------------------------------
+        // ----------------------------------------------------
+        // ПРЯМЫЕ СЕКЦИИ
+        // ----------------------------------------------------
 
-    LibraryItem(
-        title = "0.5 м",
-        type = AssemblyElementType.STRAIGHT,
-        length = 0.5
-    ),
+        LibraryItem(
+            title = "0.5 м",
+            type = AssemblyElementType.STRAIGHT,
+            length = 0.5
+        ),
 
-    LibraryItem(
-        title = "1 м",
-        type = AssemblyElementType.STRAIGHT,
-        length = 1.0
-    ),
+        LibraryItem(
+            title = "1 м",
+            type = AssemblyElementType.STRAIGHT,
+            length = 1.0
+        ),
 
-    LibraryItem(
-        title = "2 м",
-        type = AssemblyElementType.STRAIGHT,
-        length = 2.0
-    ),
+        LibraryItem(
+            title = "2 м",
+            type = AssemblyElementType.STRAIGHT,
+            length = 2.0
+        ),
 
-    LibraryItem(
-        title = "3 м",
-        type = AssemblyElementType.STRAIGHT,
-        length = 3.0
-    ),
+        LibraryItem(
+            title = "3 м",
+            type = AssemblyElementType.STRAIGHT,
+            length = 3.0
+        ),
 
-    LibraryItem(
-        title = "4 м",
-        type = AssemblyElementType.STRAIGHT,
-        length = 4.0
-    ),
+        LibraryItem(
+            title = "4 м",
+            type = AssemblyElementType.STRAIGHT,
+            length = 4.0
+        ),
 
-    // --------------------------------------------------------
-    // СОЕДИНИТЕЛИ
-    // --------------------------------------------------------
+        // ----------------------------------------------------
+        // СОЕДИНИТЕЛИ
+        // ----------------------------------------------------
 
-    LibraryItem(
-        title = "90°",
-        type = AssemblyElementType.CORNER_90
-    ),
+        LibraryItem(
+            title = "90°",
+            type = AssemblyElementType.CORNER_90
+        ),
 
-    LibraryItem(
-        title = "135°",
-        type = AssemblyElementType.CORNER_135
-    ),
+        LibraryItem(
+            title = "135°",
+            type = AssemblyElementType.CORNER_135
+        ),
 
-    LibraryItem(
-        title = "T",
-        type = AssemblyElementType.T_JUNCTION
-    ),
+        LibraryItem(
+            title = "T",
+            type = AssemblyElementType.T_JUNCTION
+        ),
 
-    LibraryItem(
-        title = "X",
-        type = AssemblyElementType.X_JUNCTION
+        LibraryItem(
+            title = "X",
+            type = AssemblyElementType.X_JUNCTION
+        )
     )
-)
 
 // ============================================================
-// ИНТЕРФЕЙС БИБЛИОТЕКИ
+// ПАНЕЛЬ БИБЛИОТЕКИ
 // ============================================================
 
 @Composable
@@ -124,25 +125,31 @@ fun TrussComponentLibrary(
     ) {
 
         Column(
-            modifier = Modifier.padding(
-                horizontal = 12.dp,
-                vertical = 8.dp
-            )
+            modifier =
+                Modifier.padding(
+                    horizontal = 12.dp,
+                    vertical = 8.dp
+                )
         ) {
 
             Text(
                 text = "Элементы",
-                style = MaterialTheme.typography.titleSmall
+                style =
+                    MaterialTheme
+                        .typography
+                        .titleSmall
             )
 
             Spacer(
-                modifier = Modifier.height(6.dp)
+                modifier =
+                    Modifier.height(6.dp)
             )
 
             Row(
-                modifier = Modifier.horizontalScroll(
-                    rememberScrollState()
-                ),
+                modifier =
+                    Modifier.horizontalScroll(
+                        rememberScrollState()
+                    ),
                 horizontalArrangement =
                     Arrangement.spacedBy(8.dp)
             ) {
@@ -166,7 +173,7 @@ fun TrussComponentLibrary(
 }
 
 // ============================================================
-// СОЗДАНИЕ ЭЛЕМЕНТА ИЗ БИБЛИОТЕКИ
+// СОЗДАНИЕ ЭЛЕМЕНТА
 // ============================================================
 
 fun createElementFromLibrary(
@@ -175,13 +182,8 @@ fun createElementFromLibrary(
     y: Float = 0f
 ): AssemblyElement {
 
-    return AssemblyElement(
-
-        id = UUID.randomUUID().toString(),
-
-        type = item.type,
-
-        name = when (item.type) {
+    val elementName =
+        when (item.type) {
 
             AssemblyElementType.STRAIGHT ->
                 "Ферма ${item.title}"
@@ -197,29 +199,52 @@ fun createElementFromLibrary(
 
             AssemblyElementType.X_JUNCTION ->
                 "X-соединитель"
-        },
+        }
 
-        length = item.length,
+    return AssemblyElement(
 
-        width = item.width,
+        id =
+            UUID.randomUUID()
+                .toString(),
 
-        height = item.height,
+        type =
+            item.type,
 
-        weight = item.weight,
+        name =
+            elementName,
 
-        x = x,
+        length =
+            item.length,
 
-        y = y,
+        width =
+            item.width,
 
-        rotation = 0f,
+        height =
+            item.height,
 
-        selected = true,
+        weight =
+            item.weight,
 
-        manufacturer = item.manufacturer,
+        x =
+            x,
 
-        series = item.series,
+        y =
+            y,
 
-        article = item.article,
+        rotation =
+            0f,
+
+        selected =
+            true,
+
+        manufacturer =
+            item.manufacturer,
+
+        series =
+            item.series,
+
+        article =
+            item.article,
 
         maxDistributedLoad =
             item.maxDistributedLoad,
@@ -230,7 +255,7 @@ fun createElementFromLibrary(
 }
 
 // ============================================================
-// ДОБАВЛЕНИЕ ЭЛЕМЕНТА В СБОРКУ
+// ДОБАВЛЕНИЕ ЭЛЕМЕНТА
 // ============================================================
 
 fun addLibraryElement(
@@ -240,18 +265,17 @@ fun addLibraryElement(
     y: Float = 0f
 ): TrussAssembly {
 
-    // Сначала снимаем выделение
-    // со всех существующих элементов.
+    // Снимаем выделение со старых элементов.
 
     val oldElements =
-        assembly.elements.map {
-            it.copy(
+        assembly.elements.map { element ->
+
+            element.copy(
                 selected = false
             )
         }
 
-    // Создаём новый элемент.
-    // Он сразу становится выбранным.
+    // Новый элемент сразу выбран.
 
     val newElement =
         createElementFromLibrary(
@@ -262,6 +286,7 @@ fun addLibraryElement(
 
     return assembly.copy(
         elements =
-            oldElements + newElement
+            oldElements +
+                newElement
     )
 }
