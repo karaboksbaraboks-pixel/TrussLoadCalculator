@@ -91,7 +91,7 @@ fun TrussAssemblyScreen() {
                 )
 
                 Text(
-                    text = "V4.1 • выбор и свободное перемещение",
+                    text = "V4.2 • расчётная модель",
                     style = MaterialTheme.typography.bodySmall
                 )
             }
@@ -142,6 +142,15 @@ fun TrussAssemblyScreen() {
 
         AssemblyStatusBar(
             assembly = assembly
+        )
+
+        // ====================================================
+        // РАСЧЁТНАЯ МОДЕЛЬ
+        // ====================================================
+
+        StructuralCalculationPanel(
+            assembly = assembly,
+            modifier = Modifier.fillMaxWidth()
         )
 
         // ====================================================
@@ -257,14 +266,6 @@ private fun AssemblyWorkspaceCanvas(
     modifier: Modifier = Modifier
 ) {
 
-    /*
-     * pointerInput(Unit) не пересоздаётся
-     * при каждом изменении координат.
-     *
-     * rememberUpdatedState позволяет обработчику
-     * всегда видеть последнюю версию assembly.
-     */
-
     val currentAssembly by
         rememberUpdatedState(
             newValue = assembly
@@ -288,10 +289,6 @@ private fun AssemblyWorkspaceCanvas(
 
                 detectDragGestures(
 
-                    // ========================================
-                    // НАЖАЛИ НА ЭЛЕМЕНТ
-                    // ========================================
-
                     onDragStart = { position ->
 
                         val latest =
@@ -309,25 +306,12 @@ private fun AssemblyWorkspaceCanvas(
                         dragStarted =
                             false
 
-                        /*
-                         * Сразу выбираем тот элемент,
-                         * на который нажали.
-                         *
-                         * Благодаря этому можно выбрать
-                         * не только последний добавленный
-                         * элемент.
-                         */
-
                         currentOnAssemblyChange(
                             latest.selectElement(
                                 elementId = found?.id
                             )
                         )
                     },
-
-                    // ========================================
-                    // ПЕРЕМЕЩЕНИЕ
-                    // ========================================
 
                     onDrag = { change, dragAmount ->
 
@@ -339,13 +323,6 @@ private fun AssemblyWorkspaceCanvas(
 
                         var latest =
                             currentAssembly
-
-                        /*
-                         * Старые соединения удаляем
-                         * только один раз —
-                         * когда пользователь действительно
-                         * начал двигать элемент.
-                         */
 
                         if (!dragStarted) {
 
@@ -365,10 +342,6 @@ private fun AssemblyWorkspaceCanvas(
                                 deltaY = dragAmount.y
                             )
 
-                        /*
-                         * Сохраняем выделение элемента.
-                         */
-
                         latest =
                             latest.selectElement(
                                 elementId = elementId
@@ -378,10 +351,6 @@ private fun AssemblyWorkspaceCanvas(
                             latest
                         )
                     },
-
-                    // ========================================
-                    // ОТПУСТИЛИ
-                    // ========================================
 
                     onDragEnd = {
 
@@ -396,19 +365,10 @@ private fun AssemblyWorkspaceCanvas(
                             var latest =
                                 currentAssembly
 
-                            /*
-                             * После отпускания пробуем
-                             * пристыковать элемент.
-                             */
-
                             latest =
                                 latest.snapElementIfNeeded(
                                     elementId = elementId
                                 )
-
-                            /*
-                             * Оставляем элемент выбранным.
-                             */
 
                             latest =
                                 latest.selectElement(
@@ -427,10 +387,6 @@ private fun AssemblyWorkspaceCanvas(
                             false
                     },
 
-                    // ========================================
-                    // ОТМЕНА ЖЕСТА
-                    // ========================================
-
                     onDragCancel = {
 
                         draggingElementId =
@@ -443,17 +399,11 @@ private fun AssemblyWorkspaceCanvas(
             }
     ) {
 
-        // Сетка
-
         drawWorkspaceGrid()
-
-        // Сохранённые соединения
 
         drawSavedConnections(
             assembly = assembly
         )
-
-        // Все элементы
 
         assembly.elements.forEach { element ->
 
@@ -626,8 +576,6 @@ private fun DrawScope.drawStraightTruss(
             element = element
         )
 
-    // Верхний пояс
-
     drawLine(
         color = color,
         start = firstA,
@@ -635,8 +583,6 @@ private fun DrawScope.drawStraightTruss(
         strokeWidth = 5f,
         cap = StrokeCap.Round
     )
-
-    // Нижний пояс
 
     drawLine(
         color = color,
@@ -646,8 +592,6 @@ private fun DrawScope.drawStraightTruss(
         cap = StrokeCap.Round
     )
 
-    // Первый торец
-
     drawLine(
         color = color,
         start = firstA,
@@ -655,16 +599,12 @@ private fun DrawScope.drawStraightTruss(
         strokeWidth = 3f
     )
 
-    // Второй торец
-
     drawLine(
         color = color,
         start = secondA,
         end = secondB,
         strokeWidth = 3f
     )
-
-    // Количество панелей
 
     val panelCount =
         (element.length * 2.0)
@@ -712,8 +652,6 @@ private fun DrawScope.drawStraightTruss(
                 fraction = secondFraction
             )
 
-        // Вертикальная стойка
-
         if (index > 0) {
 
             drawLine(
@@ -723,8 +661,6 @@ private fun DrawScope.drawStraightTruss(
                 strokeWidth = 2f
             )
         }
-
-        // Диагональ
 
         if (
             index % 2 == 0
@@ -907,8 +843,6 @@ private fun DrawScope.drawCube(
     val half =
         cubeSize / 2f
 
-    // Передняя грань
-
     val corners =
         listOf(
 
@@ -982,8 +916,6 @@ private fun DrawScope.drawCube(
         )
     )
 
-    // Задняя грань
-
     val depth =
         rotateScreenPoint(
             x = 12f,
@@ -1035,8 +967,6 @@ private fun DrawScope.drawCube(
         )
     )
 
-    // Рёбра глубины
-
     for (
         index in 0..3
     ) {
@@ -1048,8 +978,6 @@ private fun DrawScope.drawCube(
             strokeWidth = 3f
         )
     }
-
-    // Центральная точка
 
     drawCircle(
         color = color,
@@ -1121,9 +1049,6 @@ private fun DrawScope.drawSelection(
         AssemblyElementType.STRAIGHT
     ) {
 
-        // Для прямой секции показываем
-        // маркер в центре.
-
         drawCircle(
             color =
                 Color(
@@ -1186,8 +1111,6 @@ private fun DrawScope.drawSelection(
                 )
         )
     }
-
-    // Центр выбранного элемента
 
     drawCircle(
         color =
