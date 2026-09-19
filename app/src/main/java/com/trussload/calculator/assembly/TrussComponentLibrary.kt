@@ -17,96 +17,157 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import java.util.UUID
 
+// ============================================================
+// ЭЛЕМЕНТ БИБЛИОТЕКИ
+// ============================================================
+
 data class LibraryItem(
     val title: String,
     val type: AssemblyElementType,
+
+    // Размеры
     val length: Double = 0.0,
-    val weight: Double = 0.0
+    val width: Double = 0.29,
+    val height: Double = 0.29,
+
+    // Масса
+    val weight: Double = 0.0,
+
+    // Дополнительные данные
+    val manufacturer: String = "",
+    val series: String = "",
+    val article: String = "",
+
+    // Нагрузочные характеристики
+    val maxDistributedLoad: Double? = null,
+    val maxPointLoad: Double? = null
 )
 
+// ============================================================
+// СТАНДАРТНАЯ БИБЛИОТЕКА
+// ============================================================
+
 val defaultTrussLibrary = listOf(
+
+    // --------------------------------------------------------
+    // ПРЯМЫЕ СЕКЦИИ
+    // --------------------------------------------------------
+
     LibraryItem(
         title = "0.5 м",
         type = AssemblyElementType.STRAIGHT,
         length = 0.5
     ),
+
     LibraryItem(
         title = "1 м",
         type = AssemblyElementType.STRAIGHT,
         length = 1.0
     ),
+
     LibraryItem(
         title = "2 м",
         type = AssemblyElementType.STRAIGHT,
         length = 2.0
     ),
+
     LibraryItem(
         title = "3 м",
         type = AssemblyElementType.STRAIGHT,
         length = 3.0
     ),
+
     LibraryItem(
         title = "4 м",
         type = AssemblyElementType.STRAIGHT,
         length = 4.0
     ),
+
+    // --------------------------------------------------------
+    // СОЕДИНИТЕЛИ
+    // --------------------------------------------------------
+
     LibraryItem(
-        title = "Угол 90°",
-        type = AssemblyElementType.CORNER
+        title = "90°",
+        type = AssemblyElementType.CORNER_90
     ),
+
+    LibraryItem(
+        title = "135°",
+        type = AssemblyElementType.CORNER_135
+    ),
+
     LibraryItem(
         title = "T",
         type = AssemblyElementType.T_JUNCTION
     ),
+
     LibraryItem(
         title = "X",
         type = AssemblyElementType.X_JUNCTION
     )
 )
 
+// ============================================================
+// ИНТЕРФЕЙС БИБЛИОТЕКИ
+// ============================================================
+
 @Composable
 fun TrussComponentLibrary(
     onAddElement: (LibraryItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
+
     Surface(
         modifier = modifier,
         tonalElevation = 3.dp
     ) {
+
         Column(
             modifier = Modifier.padding(
                 horizontal = 12.dp,
-                vertical = 10.dp
+                vertical = 8.dp
             )
         ) {
+
             Text(
-                text = "Библиотека элементов",
-                style = MaterialTheme.typography.titleMedium
+                text = "Элементы",
+                style = MaterialTheme.typography.titleSmall
             )
 
             Spacer(
-                modifier = Modifier.height(8.dp)
+                modifier = Modifier.height(6.dp)
             )
 
             Row(
                 modifier = Modifier.horizontalScroll(
                     rememberScrollState()
                 ),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement =
+                    Arrangement.spacedBy(8.dp)
             ) {
+
                 defaultTrussLibrary.forEach { item ->
+
                     Button(
                         onClick = {
                             onAddElement(item)
                         }
                     ) {
-                        Text(item.title)
+
+                        Text(
+                            text = item.title
+                        )
                     }
                 }
             }
         }
     }
 }
+
+// ============================================================
+// СОЗДАНИЕ ЭЛЕМЕНТА ИЗ БИБЛИОТЕКИ
+// ============================================================
 
 fun createElementFromLibrary(
     item: LibraryItem,
@@ -115,16 +176,62 @@ fun createElementFromLibrary(
 ): AssemblyElement {
 
     return AssemblyElement(
+
         id = UUID.randomUUID().toString(),
+
         type = item.type,
-        name = item.title,
+
+        name = when (item.type) {
+
+            AssemblyElementType.STRAIGHT ->
+                "Ферма ${item.title}"
+
+            AssemblyElementType.CORNER_90 ->
+                "Угол 90°"
+
+            AssemblyElementType.CORNER_135 ->
+                "Угол 135°"
+
+            AssemblyElementType.T_JUNCTION ->
+                "T-соединитель"
+
+            AssemblyElementType.X_JUNCTION ->
+                "X-соединитель"
+        },
+
         length = item.length,
+
+        width = item.width,
+
+        height = item.height,
+
         weight = item.weight,
-        rotation = 0f,
+
         x = x,
-        y = y
+
+        y = y,
+
+        rotation = 0f,
+
+        selected = true,
+
+        manufacturer = item.manufacturer,
+
+        series = item.series,
+
+        article = item.article,
+
+        maxDistributedLoad =
+            item.maxDistributedLoad,
+
+        maxPointLoad =
+            item.maxPointLoad
     )
 }
+
+// ============================================================
+// ДОБАВЛЕНИЕ ЭЛЕМЕНТА В СБОРКУ
+// ============================================================
 
 fun addLibraryElement(
     assembly: TrussAssembly,
@@ -133,13 +240,28 @@ fun addLibraryElement(
     y: Float = 0f
 ): TrussAssembly {
 
-    val newElement = createElementFromLibrary(
-        item = item,
-        x = x,
-        y = y
-    )
+    // Сначала снимаем выделение
+    // со всех существующих элементов.
+
+    val oldElements =
+        assembly.elements.map {
+            it.copy(
+                selected = false
+            )
+        }
+
+    // Создаём новый элемент.
+    // Он сразу становится выбранным.
+
+    val newElement =
+        createElementFromLibrary(
+            item = item,
+            x = x,
+            y = y
+        )
 
     return assembly.copy(
-        elements = assembly.elements + newElement
+        elements =
+            oldElements + newElement
     )
 }
