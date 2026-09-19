@@ -13,7 +13,8 @@ enum class AssemblyElementType {
     CORNER_90,
     CORNER_135,
     T_JUNCTION,
-    X_JUNCTION
+    X_JUNCTION,
+    CUBE
 }
 
 // ============================================================
@@ -24,9 +25,10 @@ data class AssemblyElement(
     val id: String = UUID.randomUUID().toString(),
 
     val type: AssemblyElementType,
+
     val name: String,
 
-    // Геометрические размеры, м
+    // Геометрия, м
     val length: Double = 0.0,
     val width: Double = 0.29,
     val height: Double = 0.29,
@@ -34,17 +36,17 @@ data class AssemblyElement(
     // Масса, кг
     val weight: Double = 0.0,
 
-    // Координаты центра элемента на Canvas
+    // Центр элемента на рабочем поле, px
     val x: Float = 0f,
     val y: Float = 0f,
 
-    // Поворот по часовой стрелке, градусы
+    // Поворот в градусах
     val rotation: Float = 0f,
 
-    // Выделение
+    // Выбран ли элемент
     val selected: Boolean = false,
 
-    // Информация о конкретной ферме
+    // Данные производителя
     val manufacturer: String = "",
     val series: String = "",
     val article: String = "",
@@ -56,6 +58,9 @@ data class AssemblyElement(
 
     val isStraight: Boolean
         get() = type == AssemblyElementType.STRAIGHT
+
+    val isConnector: Boolean
+        get() = type != AssemblyElementType.STRAIGHT
 
     val rotationNormalized: Float
         get() {
@@ -96,48 +101,65 @@ data class TrussAssembly(
 
     val connections: List<AssemblyConnection> = emptyList(),
 
+    // Оставляем для дальнейшего масштабирования рабочего поля
     val zoom: Float = 1f,
+
     val panX: Float = 0f,
     val panY: Float = 0f
 ) {
 
+    // --------------------------------------------------------
+    // ОБЩАЯ ДЛИНА ПРЯМЫХ СЕКЦИЙ
+    // --------------------------------------------------------
+
     val totalStraightLength: Double
-        get() =
-            elements
-                .filter {
-                    it.type == AssemblyElementType.STRAIGHT
-                }
-                .sumOf {
-                    it.length
-                }
-
-    val totalWeight: Double
-        get() =
-            elements.sumOf {
-                it.weight
-            }
-
-    val straightSectionCount: Int
-        get() =
-            elements.count {
+        get() = elements
+            .filter {
                 it.type == AssemblyElementType.STRAIGHT
             }
+            .sumOf {
+                it.length
+            }
+
+    // --------------------------------------------------------
+    // ОБЩАЯ МАССА
+    // --------------------------------------------------------
+
+    val totalWeight: Double
+        get() = elements.sumOf {
+            it.weight
+        }
+
+    // --------------------------------------------------------
+    // КОЛИЧЕСТВО ПРЯМЫХ СЕКЦИЙ
+    // --------------------------------------------------------
+
+    val straightSectionCount: Int
+        get() = elements.count {
+            it.type == AssemblyElementType.STRAIGHT
+        }
+
+    // --------------------------------------------------------
+    // КОЛИЧЕСТВО СОЕДИНИТЕЛЕЙ
+    // --------------------------------------------------------
 
     val connectorCount: Int
-        get() =
-            elements.count {
-                it.type != AssemblyElementType.STRAIGHT
-            }
+        get() = elements.count {
+            it.type != AssemblyElementType.STRAIGHT
+        }
+
+    // --------------------------------------------------------
+    // ВЫБРАННЫЙ ЭЛЕМЕНТ
+    // --------------------------------------------------------
 
     val selectedElement: AssemblyElement?
-        get() =
-            elements.firstOrNull {
-                it.selected
-            }
+        get() = elements.firstOrNull {
+            it.selected
+        }
 }
 
 // ============================================================
-// ТОЧКА В КООРДИНАТАХ CANVAS
+// ТОЧКА В РАБОЧЕМ ПОЛЕ
 // ============================================================
 
 data class AssemblyPoint(
@@ -155,13 +177,12 @@ fun AssemblyElement.getStraightEndpoints(
 
     if (type != AssemblyElementType.STRAIGHT) {
 
-        val point =
-            AssemblyPoint(
-                x = x,
-                y = y
-            )
+        val center = AssemblyPoint(
+            x = x,
+            y = y
+        )
 
-        return point to point
+        return center to center
     }
 
     val lengthPixels =
@@ -175,15 +196,13 @@ fun AssemblyElement.getStraightEndpoints(
     val halfDx =
         (
             cos(radians) *
-                lengthPixels /
-                2.0
+                lengthPixels / 2.0
         ).toFloat()
 
     val halfDy =
         (
             sin(radians) *
-                lengthPixels /
-                2.0
+                lengthPixels / 2.0
         ).toFloat()
 
     val first =
@@ -210,56 +229,34 @@ fun TrussAssembly.selectElement(
 ): TrussAssembly {
 
     return copy(
-        elements =
-            elements.map { element ->
+        elements = elements.map { element ->
 
-                element.copy(
-                    selected =
-                        element.id == elementId
-                )
-            }
+            element.copy(
+                selected =
+                    element.id == elementId
+            )
+        }
     )
 }
 
 // ============================================================
-// СНЯТИЕ ВЫДЕЛЕНИЯ
+// СНЯТИЕ ВЫБОРА
 // ============================================================
 
 fun TrussAssembly.clearSelection(): TrussAssembly {
 
     return copy(
-        elements =
-            elements.map {
-                it.copy(
-                    selected = false
-                )
-            }
+        elements = elements.map { element ->
+
+            element.copy(
+                selected = false
+            )
+        }
     )
 }
 
 // ============================================================
-// УДАЛЕНИЕ СВЯЗЕЙ ЭЛЕМЕНТА
-//
-// Если пользователь начал двигать уже состыкованный элемент,
-// его старые соединения больше не должны оставаться активными.
-// ============================================================
-
-fun TrussAssembly.disconnectElement(
-    elementId: String
-): TrussAssembly {
-
-    return copy(
-        connections =
-            connections.filterNot { connection ->
-
-                connection.firstElementId == elementId ||
-                    connection.secondElementId == elementId
-            }
-    )
-}
-
-// ============================================================
-// ПЕРЕМЕЩЕНИЕ
+// ПЕРЕМЕЩЕНИЕ ЭЛЕМЕНТА
 // ============================================================
 
 fun TrussAssembly.moveElement(
@@ -269,21 +266,20 @@ fun TrussAssembly.moveElement(
 ): TrussAssembly {
 
     return copy(
-        elements =
-            elements.map { element ->
+        elements = elements.map { element ->
 
-                if (element.id == elementId) {
+            if (element.id == elementId) {
 
-                    element.copy(
-                        x = element.x + deltaX,
-                        y = element.y + deltaY
-                    )
+                element.copy(
+                    x = element.x + deltaX,
+                    y = element.y + deltaY
+                )
 
-                } else {
+            } else {
 
-                    element
-                }
+                element
             }
+        }
     )
 }
 
@@ -298,29 +294,25 @@ fun TrussAssembly.setElementPosition(
 ): TrussAssembly {
 
     return copy(
-        elements =
-            elements.map { element ->
+        elements = elements.map { element ->
 
-                if (element.id == elementId) {
+            if (element.id == elementId) {
 
-                    element.copy(
-                        x = x,
-                        y = y
-                    )
+                element.copy(
+                    x = x,
+                    y = y
+                )
 
-                } else {
+            } else {
 
-                    element
-                }
+                element
             }
+        }
     )
 }
 
 // ============================================================
-// ПОВОРОТ
-//
-// При повороте существующие соединения элемента удаляются,
-// потому что его узлы изменили положение.
+// ПОВОРОТ ЭЛЕМЕНТА
 // ============================================================
 
 fun TrussAssembly.rotateElement(
@@ -328,8 +320,8 @@ fun TrussAssembly.rotateElement(
     degrees: Float
 ): TrussAssembly {
 
-    val rotatedElements =
-        elements.map { element ->
+    return copy(
+        elements = elements.map { element ->
 
             if (element.id == elementId) {
 
@@ -351,15 +343,6 @@ fun TrussAssembly.rotateElement(
                 element
             }
         }
-
-    return copy(
-        elements = rotatedElements,
-        connections =
-            connections.filterNot { connection ->
-
-                connection.firstElementId == elementId ||
-                    connection.secondElementId == elementId
-            }
     )
 }
 
@@ -372,22 +355,22 @@ fun TrussAssembly.deleteElement(
 ): TrussAssembly {
 
     return copy(
+
         elements =
             elements.filterNot {
                 it.id == elementId
             },
 
         connections =
-            connections.filterNot { connection ->
-
-                connection.firstElementId == elementId ||
-                    connection.secondElementId == elementId
+            connections.filterNot {
+                it.firstElementId == elementId ||
+                    it.secondElementId == elementId
             }
     )
 }
 
 // ============================================================
-// УДАЛЕНИЕ ВЫБРАННОГО
+// УДАЛЕНИЕ ВЫБРАННОГО ЭЛЕМЕНТА
 // ============================================================
 
 fun TrussAssembly.deleteSelectedElement(): TrussAssembly {
@@ -474,6 +457,11 @@ object StandardTrussElements {
             AssemblyElement(
                 type = AssemblyElementType.X_JUNCTION,
                 name = "X-соединитель"
+            ),
+
+            AssemblyElement(
+                type = AssemblyElementType.CUBE,
+                name = "Куб"
             )
         )
 }
