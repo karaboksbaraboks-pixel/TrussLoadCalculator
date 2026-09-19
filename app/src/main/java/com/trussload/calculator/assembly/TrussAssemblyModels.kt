@@ -465,3 +465,19 @@ object StandardTrussElements {
             )
         )
 }
+// ============================================================
+// ОТСОЕДИНЕНИЕ ЭЛЕМЕНТА ОТ ВСЕХ СТЫКОВ
+// ============================================================
+
+fun TrussAssembly.disconnectElement(
+    elementId: String
+): TrussAssembly {
+
+    return copy(
+        connections = connections.filterNot { connection ->
+
+            connection.firstElementId == elementId ||
+                connection.secondElementId == elementId
+        }
+    )
+}
