@@ -26,7 +26,6 @@ enum class AppScreen {
 fun AppNavigation(
     calculatorContent: @Composable () -> Unit
 ) {
-
     var currentScreen by remember {
         mutableStateOf(AppScreen.CALCULATOR)
     }
@@ -79,7 +78,7 @@ fun AppNavigation(
             }
 
             AppScreen.ASSEMBLY -> {
-                AssemblyWorkspaceScreen()
+                TrussAssemblyScreen()
             }
         }
     }
