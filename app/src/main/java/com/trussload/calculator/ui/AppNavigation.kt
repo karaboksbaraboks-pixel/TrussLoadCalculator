@@ -1,13 +1,11 @@
 package com.trussload.calculator.ui
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.weight
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -38,6 +36,7 @@ fun AppNavigation(
     ) {
 
         Surface(
+            modifier = Modifier.fillMaxWidth(),
             tonalElevation = 3.dp
         ) {
 
@@ -48,17 +47,13 @@ fun AppNavigation(
                         horizontal = 12.dp,
                         vertical = 8.dp
                     ),
-                horizontalArrangement =
-                    Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
 
                 FilterChip(
-                    selected =
-                        currentScreen ==
-                            AppScreen.CALCULATOR,
+                    selected = currentScreen == AppScreen.CALCULATOR,
                     onClick = {
-                        currentScreen =
-                            AppScreen.CALCULATOR
+                        currentScreen = AppScreen.CALCULATOR
                     },
                     label = {
                         Text("Расчёт")
@@ -66,12 +61,9 @@ fun AppNavigation(
                 )
 
                 FilterChip(
-                    selected =
-                        currentScreen ==
-                            AppScreen.ASSEMBLY,
+                    selected = currentScreen == AppScreen.ASSEMBLY,
                     onClick = {
-                        currentScreen =
-                            AppScreen.ASSEMBLY
+                        currentScreen = AppScreen.ASSEMBLY
                     },
                     label = {
                         Text("Конструктор")
@@ -80,21 +72,14 @@ fun AppNavigation(
             }
         }
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-        ) {
+        when (currentScreen) {
 
-            when (currentScreen) {
+            AppScreen.CALCULATOR -> {
+                calculatorContent()
+            }
 
-                AppScreen.CALCULATOR -> {
-                    calculatorContent()
-                }
-
-                AppScreen.ASSEMBLY -> {
-                    AssemblyWorkspaceScreen()
-                }
+            AppScreen.ASSEMBLY -> {
+                AssemblyWorkspaceScreen()
             }
         }
     }
