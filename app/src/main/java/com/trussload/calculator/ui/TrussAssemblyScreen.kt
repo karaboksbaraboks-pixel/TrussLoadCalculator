@@ -43,6 +43,7 @@ import com.trussload.calculator.assembly.moveElement
 import com.trussload.calculator.assembly.selectElement
 import com.trussload.calculator.assembly.snapElementIfNeeded
 import com.trussload.calculator.calculation.AssemblyStructuralConverter
+import com.trussload.calculator.models.StructuralModel
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -268,13 +269,9 @@ private fun AssemblyWorkspaceCanvas(
             newValue = onAssemblyChange
         )
 
-    /*
-     * Каждый раз при изменении визуальной сборки
-     * строим расчётную модель.
-     *
-     * Пока модель используется только для отображения
-     * расчётных узлов и стержней.
-     */
+    // --------------------------------------------------------
+    // ПРЕОБРАЗОВАНИЕ В РАСЧЁТНУЮ МОДЕЛЬ
+    // --------------------------------------------------------
 
     val structuralModel =
         remember(assembly) {
@@ -484,10 +481,6 @@ private fun AssemblyWorkspaceCanvas(
 
         // ====================================================
         // 4. РАСЧЁТНАЯ СХЕМА
-        //
-        // Фиолетовые точки = расчётные узлы.
-        // Полупрозрачные зелёные линии =
-        // расчётные стержни.
         // ====================================================
 
         drawStructuralOverlay(
@@ -512,14 +505,16 @@ private fun DrawScope.drawWorkspaceGrid() {
 
         drawLine(
             color = Color(0xFFE7E9EC),
-            start = Offset(
-                x = x,
-                y = 0f
-            ),
-            end = Offset(
-                x = x,
-                y = size.height
-            ),
+            start =
+                Offset(
+                    x = x,
+                    y = 0f
+                ),
+            end =
+                Offset(
+                    x = x,
+                    y = size.height
+                ),
             strokeWidth = 1f
         )
 
@@ -533,14 +528,16 @@ private fun DrawScope.drawWorkspaceGrid() {
 
         drawLine(
             color = Color(0xFFE7E9EC),
-            start = Offset(
-                x = 0f,
-                y = y
-            ),
-            end = Offset(
-                x = size.width,
-                y = y
-            ),
+            start =
+                Offset(
+                    x = 0f,
+                    y = y
+                ),
+            end =
+                Offset(
+                    x = size.width,
+                    y = y
+                ),
             strokeWidth = 1f
         )
 
@@ -549,7 +546,7 @@ private fun DrawScope.drawWorkspaceGrid() {
 }
 
 // ============================================================
-// ПРЯМАЯ СЕКЦИЯ
+// ПРЯМАЯ СЕКЦИЯ ФЕРМЫ
 // ============================================================
 
 private fun DrawScope.drawStraightTruss(
@@ -559,8 +556,7 @@ private fun DrawScope.drawStraightTruss(
     val endpoints =
         element.getStraightEndpoints(
             pixelsPerMeter =
-                AssemblyGeometryConfig
-                    .PIXELS_PER_METER
+                AssemblyGeometryConfig.PIXELS_PER_METER
         )
 
     val start =
@@ -644,7 +640,7 @@ private fun DrawScope.drawStraightTruss(
         cap = StrokeCap.Round
     )
 
-    // Первый торец
+    // Торцы
 
     drawLine(
         color = color,
@@ -653,14 +649,16 @@ private fun DrawScope.drawStraightTruss(
         strokeWidth = 3f
     )
 
-    // Второй торец
-
     drawLine(
         color = color,
         start = secondA,
         end = secondB,
         strokeWidth = 3f
     )
+
+    // --------------------------------------------------------
+    // РЕШЁТКА
+    // --------------------------------------------------------
 
     val panelCount =
         (element.length * 2.0)
@@ -708,6 +706,8 @@ private fun DrawScope.drawStraightTruss(
                 fraction = secondFraction
             )
 
+        // Вертикальная стойка
+
         if (index > 0) {
 
             drawLine(
@@ -717,6 +717,8 @@ private fun DrawScope.drawStraightTruss(
                 strokeWidth = 2f
             )
         }
+
+        // Диагональ
 
         if (
             index % 2 == 0
@@ -899,37 +901,36 @@ private fun DrawScope.drawCube(
     val half =
         cubeSize / 2f
 
+    // --------------------------------------------------------
+    // ПЕРЕДНЯЯ ГРАНЬ
+    // --------------------------------------------------------
+
     val corners =
         listOf(
-
             rotateScreenPoint(
                 x = -half,
                 y = -half,
                 rotationDegrees =
                     element.rotation
             ),
-
             rotateScreenPoint(
                 x = half,
                 y = -half,
                 rotationDegrees =
                     element.rotation
             ),
-
             rotateScreenPoint(
                 x = half,
                 y = half,
                 rotationDegrees =
                     element.rotation
             ),
-
             rotateScreenPoint(
                 x = -half,
                 y = half,
                 rotationDegrees =
                     element.rotation
             )
-
         ).map { point ->
 
             Offset(
@@ -967,10 +968,15 @@ private fun DrawScope.drawCube(
     drawPath(
         path = frontPath,
         color = color,
-        style = Stroke(
-            width = 5f
-        )
+        style =
+            Stroke(
+                width = 5f
+            )
     )
+
+    // --------------------------------------------------------
+    // ЗАДНЯЯ ГРАНЬ
+    // --------------------------------------------------------
 
     val depth =
         rotateScreenPoint(
@@ -1016,4 +1022,471 @@ private fun DrawScope.drawCube(
         }
 
     drawPath(
-       
+        path = backPath,
+        color = color,
+        style =
+            Stroke(
+                width = 3f
+            )
+    )
+
+    // --------------------------------------------------------
+    // РЁБРА ГЛУБИНЫ
+    // --------------------------------------------------------
+
+    for (
+        index in
+        0..3
+    ) {
+
+        drawLine(
+            color = color,
+            start = corners[index],
+            end = backCorners[index],
+            strokeWidth = 3f
+        )
+    }
+
+    // --------------------------------------------------------
+    // ЦЕНТР
+    // --------------------------------------------------------
+
+    drawCircle(
+        color = color,
+        radius = 7f,
+        center = center
+    )
+}
+
+// ============================================================
+// УЗЛЫ ПОДКЛЮЧЕНИЯ
+// ============================================================
+
+private fun DrawScope.drawConnectionNodes(
+    element: AssemblyElement
+) {
+
+    element
+        .getNodes()
+        .forEach { node ->
+
+            drawCircle(
+                color =
+                    if (
+                        element.selected
+                    ) {
+
+                        Color(
+                            0xFFFF5722
+                        )
+
+                    } else {
+
+                        Color(
+                            0xFFD32F2F
+                        )
+                    },
+                radius =
+                    AssemblyGeometryConfig
+                        .NODE_RADIUS,
+                center =
+                    Offset(
+                        x = node.x,
+                        y = node.y
+                    )
+            )
+
+            drawCircle(
+                color = Color.White,
+                radius = 3f,
+                center =
+                    Offset(
+                        x = node.x,
+                        y = node.y
+                    )
+            )
+        }
+}
+
+// ============================================================
+// ВЫДЕЛЕНИЕ ЭЛЕМЕНТА
+// ============================================================
+
+private fun DrawScope.drawSelection(
+    element: AssemblyElement
+) {
+
+    if (
+        element.type ==
+        AssemblyElementType.STRAIGHT
+    ) {
+
+        drawCircle(
+            color =
+                Color(
+                    0x44FF9800
+                ),
+            radius = 25f,
+            center =
+                Offset(
+                    x = element.x,
+                    y = element.y
+                )
+        )
+
+    } else {
+
+        val selectionSize =
+            if (
+                element.type ==
+                AssemblyElementType.CUBE
+            ) {
+
+                AssemblyGeometryConfig
+                    .CUBE_SIZE +
+                    30f
+
+            } else {
+
+                AssemblyGeometryConfig
+                    .CONNECTOR_SIZE *
+                    2f +
+                    30f
+            }
+
+        drawRect(
+            color =
+                Color(
+                    0xFFFF9800
+                ),
+            topLeft =
+                Offset(
+                    x =
+                        element.x -
+                            selectionSize /
+                            2f,
+                    y =
+                        element.y -
+                            selectionSize /
+                            2f
+                ),
+            size =
+                Size(
+                    width =
+                        selectionSize,
+                    height =
+                        selectionSize
+                ),
+            style =
+                Stroke(
+                    width = 3f
+                )
+        )
+    }
+
+    drawCircle(
+        color =
+            Color(
+                0xFFFF9800
+            ),
+        radius = 5f,
+        center =
+            Offset(
+                x = element.x,
+                y = element.y
+            )
+    )
+}
+
+// ============================================================
+// СОХРАНЁННЫЕ СТЫКИ
+// ============================================================
+
+private fun DrawScope.drawSavedConnections(
+    assembly: TrussAssembly
+) {
+
+    assembly
+        .connections
+        .forEach { connection ->
+
+            val firstElement =
+                assembly.elements
+                    .firstOrNull {
+
+                        it.id ==
+                            connection
+                                .firstElementId
+                    }
+                    ?: return@forEach
+
+            val secondElement =
+                assembly.elements
+                    .firstOrNull {
+
+                        it.id ==
+                            connection
+                                .secondElementId
+                    }
+                    ?: return@forEach
+
+            val firstNode =
+                firstElement
+                    .getNodes()
+                    .firstOrNull {
+
+                        it.nodeIndex ==
+                            connection
+                                .firstNodeIndex
+                    }
+                    ?: return@forEach
+
+            val secondNode =
+                secondElement
+                    .getNodes()
+                    .firstOrNull {
+
+                        it.nodeIndex ==
+                            connection
+                                .secondNodeIndex
+                    }
+                    ?: return@forEach
+
+            val center =
+                Offset(
+                    x =
+                        (
+                            firstNode.x +
+                                secondNode.x
+                        ) / 2f,
+                    y =
+                        (
+                            firstNode.y +
+                                secondNode.y
+                        ) / 2f
+                )
+
+            drawCircle(
+                color =
+                    Color(
+                        0xFF43A047
+                    ),
+                radius = 6f,
+                center = center
+            )
+        }
+}
+
+// ============================================================
+// РАСЧЁТНАЯ СХЕМА
+//
+// StructuralModel хранит координаты в метрах.
+// Canvas работает в пикселях.
+//
+// Поэтому координаты переводятся обратно:
+// meters * PIXELS_PER_METER
+// ============================================================
+
+private fun DrawScope.drawStructuralOverlay(
+    model: StructuralModel
+) {
+
+    val pixelsPerMeter =
+        AssemblyGeometryConfig
+            .PIXELS_PER_METER
+
+    // --------------------------------------------------------
+    // РАСЧЁТНЫЕ СТЕРЖНИ
+    // --------------------------------------------------------
+
+    model.members.forEach { member ->
+
+        val startNode =
+            model.nodes.firstOrNull {
+                it.id ==
+                    member.startNodeId
+            } ?: return@forEach
+
+        val endNode =
+            model.nodes.firstOrNull {
+                it.id ==
+                    member.endNodeId
+            } ?: return@forEach
+
+        val start =
+            Offset(
+                x =
+                    (
+                        startNode.x *
+                            pixelsPerMeter
+                    ).toFloat(),
+                y =
+                    (
+                        startNode.y *
+                            pixelsPerMeter
+                    ).toFloat()
+            )
+
+        val end =
+            Offset(
+                x =
+                    (
+                        endNode.x *
+                            pixelsPerMeter
+                    ).toFloat(),
+                y =
+                    (
+                        endNode.y *
+                            pixelsPerMeter
+                    ).toFloat()
+            )
+
+        // Полупрозрачный зелёный стержень
+
+        drawLine(
+            color =
+                Color(
+                    0x884CAF50
+                ),
+            start = start,
+            end = end,
+            strokeWidth = 4f,
+            cap = StrokeCap.Round
+        )
+    }
+
+    // --------------------------------------------------------
+    // РАСЧЁТНЫЕ УЗЛЫ
+    // --------------------------------------------------------
+
+    model.nodes.forEach { node ->
+
+        val center =
+            Offset(
+                x =
+                    (
+                        node.x *
+                            pixelsPerMeter
+                    ).toFloat(),
+                y =
+                    (
+                        node.y *
+                            pixelsPerMeter
+                    ).toFloat()
+            )
+
+        // Белая внешняя окантовка
+
+        drawCircle(
+            color = Color.White,
+            radius = 9f,
+            center = center
+        )
+
+        // Фиолетовый расчётный узел
+
+        drawCircle(
+            color =
+                Color(
+                    0xFF7B1FA2
+                ),
+            radius = 6f,
+            center = center
+        )
+
+        // Центральная точка
+
+        drawCircle(
+            color = Color.White,
+            radius = 2f,
+            center = center
+        )
+    }
+}
+
+// ============================================================
+// ЦВЕТ ЭЛЕМЕНТА
+// ============================================================
+
+private fun elementColor(
+    element: AssemblyElement
+): Color {
+
+    return if (
+        element.selected
+    ) {
+
+        Color(
+            0xFFFF9800
+        )
+
+    } else {
+
+        Color(
+            0xFF1565C0
+        )
+    }
+}
+
+// ============================================================
+// ИНТЕРПОЛЯЦИЯ
+// ============================================================
+
+private fun interpolate(
+    start: Offset,
+    end: Offset,
+    fraction: Float
+): Offset {
+
+    return Offset(
+        x =
+            start.x +
+                (
+                    end.x -
+                        start.x
+                    ) *
+                fraction,
+        y =
+            start.y +
+                (
+                    end.y -
+                        start.y
+                    ) *
+                fraction
+    )
+}
+
+// ============================================================
+// ПОВОРОТ ТОЧКИ
+// ============================================================
+
+private fun rotateScreenPoint(
+    x: Float,
+    y: Float,
+    rotationDegrees: Float
+): Offset {
+
+    val radians =
+        Math.toRadians(
+            rotationDegrees.toDouble()
+        )
+
+    val cosine =
+        cos(
+            radians
+        ).toFloat()
+
+    val sine =
+        sin(
+            radians
+        ).toFloat()
+
+    return Offset(
+        x =
+            x * cosine -
+                y * sine,
+        y =
+            x * sine +
+                y * cosine
+    )
+}
