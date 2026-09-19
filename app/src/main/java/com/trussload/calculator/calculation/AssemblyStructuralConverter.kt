@@ -14,31 +14,9 @@ import kotlin.math.hypot
 
 // ============================================================
 // КОНВЕРТЕР ВИЗУАЛЬНОЙ СБОРКИ В РАСЧЁТНУЮ МОДЕЛЬ
-//
-// Визуальный конструктор:
-//     координаты в пикселях
-//
-// Расчётная модель:
-//     координаты в метрах
-//
-// AssemblyConnection используется для объединения
-// физических узлов.
-//
-// Расчётные свойства элемента:
-//     areaM2
-//     elasticModulusKnPerM2
-//
-// передаются в StructuralMember.
-//
-// ВАЖНО:
-// этот класс НЕ изменяет TrussAssembly.
 // ============================================================
 
 object AssemblyStructuralConverter {
-
-    // ========================================================
-    // ОСНОВНОЙ МЕТОД
-    // ========================================================
 
     fun convert(
         assembly: TrussAssembly
@@ -88,7 +66,7 @@ object AssemblyStructuralConverter {
     }
 
     // ========================================================
-    // СОЗДАНИЕ ССЫЛОК НА ВСЕ УЗЛЫ ВИЗУАЛЬНОЙ СБОРКИ
+    // УЗЛЫ ВИЗУАЛЬНОЙ СБОРКИ
     // ========================================================
 
     private fun createNodeReferences(
@@ -110,6 +88,7 @@ object AssemblyStructuralConverter {
 
                     result +=
                         AssemblyNodeReference(
+
                             key =
                                 NodeKey(
                                     elementId =
@@ -130,8 +109,6 @@ object AssemblyStructuralConverter {
 
     // ========================================================
     // ОБЪЕДИНЕНИЕ СОЕДИНЁННЫХ УЗЛОВ
-    //
-    // Используется Union-Find.
     // ========================================================
 
     private fun buildConnectedNodeGroups(
@@ -194,7 +171,7 @@ object AssemblyStructuralConverter {
     }
 
     // ========================================================
-    // СОЗДАНИЕ ФИЗИЧЕСКИХ РАСЧЁТНЫХ УЗЛОВ
+    // СОЗДАНИЕ STRUCTURAL NODE
     // ========================================================
 
     private fun createStructuralNodes(
@@ -219,6 +196,7 @@ object AssemblyStructuralConverter {
                     .average()
 
             StructuralNode(
+
                 x =
                     pixelsToMeters(
                         pixels = averageX
@@ -245,11 +223,7 @@ object AssemblyStructuralConverter {
     }
 
     // ========================================================
-    // КАРТА
-    //
-    // elementId + nodeIndex
-    //          ->
-    // StructuralNode
+    // КАРТА ВИЗУАЛЬНЫХ УЗЛОВ -> STRUCTURAL NODE
     // ========================================================
 
     private fun createStructuralNodeReferenceMap(
@@ -261,7 +235,10 @@ object AssemblyStructuralConverter {
     ): Map<NodeKey, StructuralNode> {
 
         val result =
-            mutableMapOf<NodeKey, StructuralNode>()
+            mutableMapOf<
+                NodeKey,
+                StructuralNode
+            >()
 
         groups.forEachIndexed {
                 index,
@@ -285,7 +262,7 @@ object AssemblyStructuralConverter {
     }
 
     // ========================================================
-    // СОЗДАНИЕ РАСЧЁТНЫХ СТЕРЖНЕЙ
+    // СОЗДАНИЕ STRUCTURAL MEMBERS
     // ========================================================
 
     private fun createStructuralMembers(
@@ -358,8 +335,7 @@ object AssemblyStructuralConverter {
                     nodeIndex =
                         0
                 )
-            ]
-                ?: return
+            ] ?: return
 
         val end =
             structuralNodeByReference[
@@ -370,15 +346,18 @@ object AssemblyStructuralConverter {
                     nodeIndex =
                         1
                 )
-            ]
-                ?: return
+            ] ?: return
 
-        if (start.id == end.id) {
+        if (
+            start.id ==
+            end.id
+        ) {
             return
         }
 
         result +=
             StructuralMember(
+
                 startNodeId =
                     start.id,
 
@@ -388,9 +367,9 @@ object AssemblyStructuralConverter {
                 sourceElementId =
                     element.id,
 
-                // --------------------------------------------
+                // ============================================
                 // РАСЧЁТНЫЕ ХАРАКТЕРИСТИКИ
-                // --------------------------------------------
+                // ============================================
 
                 area =
                     element.areaM2,
@@ -398,16 +377,16 @@ object AssemblyStructuralConverter {
                 elasticModulus =
                     element.elasticModulusKnPerM2,
 
-                // --------------------------------------------
+                // ============================================
                 // МАССА
-                // --------------------------------------------
+                // ============================================
 
                 massKg =
                     element.weight,
 
-                // --------------------------------------------
+                // ============================================
                 // ДОПУСТИМЫЕ НАГРУЗКИ
-                // --------------------------------------------
+                // ============================================
 
                 maxDistributedLoadKnPerM =
                     element.maxDistributedLoad
@@ -420,7 +399,7 @@ object AssemblyStructuralConverter {
     }
 
     // ========================================================
-    // СОЕДИНИТЕЛИ / УГЛЫ / T / X / КУБ
+    // СОЕДИНИТЕЛИ
     // ========================================================
 
     private fun addConnectorMembers(
@@ -440,18 +419,11 @@ object AssemblyStructuralConverter {
                         .PIXELS_PER_METER
             )
 
-        if (visualNodes.isEmpty()) {
+        if (
+            visualNodes.isEmpty()
+        ) {
             return
         }
-
-        /*
-         * На текущем этапе соединитель представляется
-         * несколькими расчётными стержнями между его
-         * внешними узлами.
-         *
-         * Отдельный центральный StructuralNode
-         * пока не создаётся.
-         */
 
         val nodes =
             visualNodes
@@ -471,7 +443,9 @@ object AssemblyStructuralConverter {
                     it.id
                 }
 
-        if (nodes.size < 2) {
+        if (
+            nodes.size < 2
+        ) {
             return
         }
 
@@ -482,45 +456,55 @@ object AssemblyStructuralConverter {
             .drop(1)
             .forEach { node ->
 
-                if (first.id == node.id) {
-                    return@forEach
+                if (
+                    first.id !=
+                    node.id
+                ) {
+
+                    result +=
+                        StructuralMember(
+
+                            startNodeId =
+                                first.id,
+
+                            endNodeId =
+                                node.id,
+
+                            sourceElementId =
+                                element.id,
+
+                            // =================================
+                            // РАСЧЁТНЫЕ ХАРАКТЕРИСТИКИ
+                            // =================================
+
+                            area =
+                                element.areaM2,
+
+                            elasticModulus =
+                                element.elasticModulusKnPerM2,
+
+                            // =================================
+                            // МАССА
+                            // =================================
+
+                            massKg =
+                                0.0,
+
+                            // =================================
+                            // ДОПУСТИМЫЕ НАГРУЗКИ
+                            // =================================
+
+                            maxDistributedLoadKnPerM =
+                                element
+                                    .maxDistributedLoad
+                                    ?: 0.0,
+
+                            maxPointLoadKn =
+                                element
+                                    .maxPointLoad
+                                    ?: 0.0
+                        )
                 }
-
-                result +=
-                    StructuralMember(
-                        startNodeId =
-                            first.id,
-
-                        endNodeId =
-                            node.id,
-
-                        sourceElementId =
-                            element.id,
-
-                        // ------------------------------------
-                        // РАСЧЁТНЫЕ ХАРАКТЕРИСТИКИ
-                        // ------------------------------------
-
-                        area =
-                            element.areaM2,
-
-                        elasticModulus =
-                            element.elasticModulusKnPerM2,
-
-                        // Массу соединителя пока не
-                        // дублируем между несколькими
-                        // расчётными стержнями.
-                        massKg =
-                            0.0,
-
-                        maxDistributedLoadKnPerM =
-                            element.maxDistributedLoad
-                                ?: 0.0,
-
-                        maxPointLoadKn =
-                            element.maxPointLoad
-                                ?: 0.0
-                    )
             }
     }
 
@@ -540,7 +524,7 @@ object AssemblyStructuralConverter {
 }
 
 // ============================================================
-// ССЫЛКА НА УЗЕЛ ВИЗУАЛЬНОГО ЭЛЕМЕНТА
+// ССЫЛКА НА УЗЕЛ
 // ============================================================
 
 private data class AssemblyNodeReference(
@@ -551,7 +535,7 @@ private data class AssemblyNodeReference(
 )
 
 // ============================================================
-// УНИКАЛЬНЫЙ КЛЮЧ УЗЛА
+// КЛЮЧ УЗЛА
 // ============================================================
 
 private data class NodeKey(
@@ -599,7 +583,10 @@ private class NodeUnionFind(
             parent[key]
                 ?: return key
 
-        if (current == key) {
+        if (
+            current ==
+            key
+        ) {
             return key
         }
 
@@ -643,7 +630,7 @@ private class NodeUnionFind(
 }
 
 // ============================================================
-// ПРОВЕРКА ГЕОМЕТРИИ РАСЧЁТНОЙ МОДЕЛИ
+// ПРОВЕРКА ГЕОМЕТРИИ
 // ============================================================
 
 fun StructuralModel.validateGeometry():
@@ -652,13 +639,17 @@ fun StructuralModel.validateGeometry():
     val errors =
         mutableListOf<String>()
 
-    if (nodes.isEmpty()) {
+    if (
+        nodes.isEmpty()
+    ) {
 
         errors +=
             "В расчётной схеме отсутствуют узлы."
     }
 
-    if (members.isEmpty()) {
+    if (
+        members.isEmpty()
+    ) {
 
         errors +=
             "В расчётной схеме отсутствуют элементы."
@@ -676,7 +667,9 @@ fun StructuralModel.validateGeometry():
                 member.endNodeId
             )
 
-        if (start == null) {
+        if (
+            start == null
+        ) {
 
             errors +=
                 "Не найден начальный узел элемента ${member.id}."
@@ -684,7 +677,9 @@ fun StructuralModel.validateGeometry():
             return@forEach
         }
 
-        if (end == null) {
+        if (
+            end == null
+        ) {
 
             errors +=
                 "Не найден конечный узел элемента ${member.id}."
@@ -694,8 +689,11 @@ fun StructuralModel.validateGeometry():
 
         val length =
             hypot(
-                end.x - start.x,
-                end.y - start.y
+                end.x -
+                    start.x,
+
+                end.y -
+                    start.y
             )
 
         if (
@@ -712,7 +710,7 @@ fun StructuralModel.validateGeometry():
 }
 
 // ============================================================
-// ПРОВЕРКА СОВПАДАЮЩИХ НЕСОЕДИНЁННЫХ УЗЛОВ
+// ПОИСК ПОЧТИ СОВПАДАЮЩИХ УЗЛОВ
 // ============================================================
 
 fun StructuralModel.findNearlyCoincidentNodes(
