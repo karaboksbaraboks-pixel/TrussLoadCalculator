@@ -26,6 +26,7 @@ enum class AppScreen {
 fun AppNavigation(
     calculatorContent: @Composable () -> Unit
 ) {
+
     var currentScreen by remember {
         mutableStateOf(AppScreen.CALCULATOR)
     }
@@ -46,13 +47,17 @@ fun AppNavigation(
                         horizontal = 12.dp,
                         vertical = 8.dp
                     ),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement =
+                    Arrangement.spacedBy(8.dp)
             ) {
 
                 FilterChip(
-                    selected = currentScreen == AppScreen.CALCULATOR,
+                    selected =
+                        currentScreen ==
+                            AppScreen.CALCULATOR,
                     onClick = {
-                        currentScreen = AppScreen.CALCULATOR
+                        currentScreen =
+                            AppScreen.CALCULATOR
                     },
                     label = {
                         Text("Расчёт")
@@ -60,9 +65,12 @@ fun AppNavigation(
                 )
 
                 FilterChip(
-                    selected = currentScreen == AppScreen.ASSEMBLY,
+                    selected =
+                        currentScreen ==
+                            AppScreen.ASSEMBLY,
                     onClick = {
-                        currentScreen = AppScreen.ASSEMBLY
+                        currentScreen =
+                            AppScreen.ASSEMBLY
                     },
                     label = {
                         Text("Конструктор")
