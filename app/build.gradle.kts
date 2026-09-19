@@ -9,14 +9,12 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.trussload.calculator"
-
-        minSdk = 26
-        targetSdk = 35
-
-        versionCode = 2
-        versionName = "1.1"
-    }
+    applicationId = "com.trussload.calculator"
+    minSdk = 26
+    targetSdk = 35
+    versionCode = 3
+    versionName = "1.2"
+}
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
