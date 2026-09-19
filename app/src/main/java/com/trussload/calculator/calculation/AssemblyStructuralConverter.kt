@@ -21,8 +21,14 @@ import kotlin.math.hypot
 // Расчётная модель:
 //     координаты в метрах
 //
-// Все сохранённые AssemblyConnection используются для
-// объединения физических узлов.
+// AssemblyConnection используется для объединения
+// физических узлов.
+//
+// Расчётные свойства элемента:
+//     areaM2
+//     elasticModulusKnPerM2
+//
+// передаются в StructuralMember.
 //
 // ВАЖНО:
 // этот класс НЕ изменяет TrussAssembly.
@@ -30,9 +36,9 @@ import kotlin.math.hypot
 
 object AssemblyStructuralConverter {
 
-    // --------------------------------------------------------
+    // ========================================================
     // ОСНОВНОЙ МЕТОД
-    // --------------------------------------------------------
+    // ========================================================
 
     fun convert(
         assembly: TrussAssembly
@@ -81,9 +87,9 @@ object AssemblyStructuralConverter {
         )
     }
 
-    // --------------------------------------------------------
-    // СОЗДАЁМ ВСЕ УЗЛЫ ВИЗУАЛЬНОЙ СБОРКИ
-    // --------------------------------------------------------
+    // ========================================================
+    // СОЗДАНИЕ ССЫЛОК НА ВСЕ УЗЛЫ ВИЗУАЛЬНОЙ СБОРКИ
+    // ========================================================
 
     private fun createNodeReferences(
         assembly: TrussAssembly
@@ -108,11 +114,13 @@ object AssemblyStructuralConverter {
                                 NodeKey(
                                     elementId =
                                         node.elementId,
+
                                     nodeIndex =
                                         node.nodeIndex
                                 ),
 
-                            node = node
+                            node =
+                                node
                         )
                 }
         }
@@ -120,11 +128,11 @@ object AssemblyStructuralConverter {
         return result
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // ОБЪЕДИНЕНИЕ СОЕДИНЁННЫХ УЗЛОВ
     //
     // Используется Union-Find.
-    // --------------------------------------------------------
+    // ========================================================
 
     private fun buildConnectedNodeGroups(
         assembly: TrussAssembly,
@@ -185,9 +193,9 @@ object AssemblyStructuralConverter {
             .toList()
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // СОЗДАНИЕ ФИЗИЧЕСКИХ РАСЧЁТНЫХ УЗЛОВ
-    // --------------------------------------------------------
+    // ========================================================
 
     private fun createStructuralNodes(
         groups:
@@ -236,13 +244,13 @@ object AssemblyStructuralConverter {
         }
     }
 
-    // --------------------------------------------------------
-    // КАРТА:
+    // ========================================================
+    // КАРТА
     //
     // elementId + nodeIndex
     //          ->
     // StructuralNode
-    // --------------------------------------------------------
+    // ========================================================
 
     private fun createStructuralNodeReferenceMap(
         groups:
@@ -268,16 +276,17 @@ object AssemblyStructuralConverter {
 
                 result[
                     reference.key
-                ] = structuralNode
+                ] =
+                    structuralNode
             }
         }
 
         return result
     }
 
-    // --------------------------------------------------------
-    // СОЗДАНИЕ РАСЧЁТНЫХ ЭЛЕМЕНТОВ
-    // --------------------------------------------------------
+    // ========================================================
+    // СОЗДАНИЕ РАСЧЁТНЫХ СТЕРЖНЕЙ
+    // ========================================================
 
     private fun createStructuralMembers(
         assembly: TrussAssembly,
@@ -326,9 +335,9 @@ object AssemblyStructuralConverter {
         return result
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // ПРЯМАЯ СЕКЦИЯ
-    // --------------------------------------------------------
+    // ========================================================
 
     private fun addStraightMember(
         element: AssemblyElement,
@@ -343,18 +352,26 @@ object AssemblyStructuralConverter {
         val start =
             structuralNodeByReference[
                 NodeKey(
-                    elementId = element.id,
-                    nodeIndex = 0
+                    elementId =
+                        element.id,
+
+                    nodeIndex =
+                        0
                 )
-            ] ?: return
+            ]
+                ?: return
 
         val end =
             structuralNodeByReference[
                 NodeKey(
-                    elementId = element.id,
-                    nodeIndex = 1
+                    elementId =
+                        element.id,
+
+                    nodeIndex =
+                        1
                 )
-            ] ?: return
+            ]
+                ?: return
 
         if (start.id == end.id) {
             return
@@ -371,8 +388,26 @@ object AssemblyStructuralConverter {
                 sourceElementId =
                     element.id,
 
+                // --------------------------------------------
+                // РАСЧЁТНЫЕ ХАРАКТЕРИСТИКИ
+                // --------------------------------------------
+
+                area =
+                    element.areaM2,
+
+                elasticModulus =
+                    element.elasticModulusKnPerM2,
+
+                // --------------------------------------------
+                // МАССА
+                // --------------------------------------------
+
                 massKg =
                     element.weight,
+
+                // --------------------------------------------
+                // ДОПУСТИМЫЕ НАГРУЗКИ
+                // --------------------------------------------
 
                 maxDistributedLoadKnPerM =
                     element.maxDistributedLoad
@@ -384,9 +419,9 @@ object AssemblyStructuralConverter {
             )
     }
 
-    // --------------------------------------------------------
-    // СОЕДИНИТЕЛЬ / КУБ
-    // --------------------------------------------------------
+    // ========================================================
+    // СОЕДИНИТЕЛИ / УГЛЫ / T / X / КУБ
+    // ========================================================
 
     private fun addConnectorMembers(
         element: AssemblyElement,
@@ -410,11 +445,12 @@ object AssemblyStructuralConverter {
         }
 
         /*
-         * Для углов, T, X и куба сейчас используем
-         * существующие внешние расчётные узлы.
+         * На текущем этапе соединитель представляется
+         * несколькими расчётными стержнями между его
+         * внешними узлами.
          *
          * Отдельный центральный StructuralNode
-         * на данном этапе не создаётся.
+         * пока не создаётся.
          */
 
         val nodes =
@@ -446,39 +482,51 @@ object AssemblyStructuralConverter {
             .drop(1)
             .forEach { node ->
 
-                if (first.id != node.id) {
-
-                    result +=
-                        StructuralMember(
-                            startNodeId =
-                                first.id,
-
-                            endNodeId =
-                                node.id,
-
-                            sourceElementId =
-                                element.id,
-
-                            massKg =
-                                0.0,
-
-                            maxDistributedLoadKnPerM =
-                                element
-                                    .maxDistributedLoad
-                                    ?: 0.0,
-
-                            maxPointLoadKn =
-                                element
-                                    .maxPointLoad
-                                    ?: 0.0
-                        )
+                if (first.id == node.id) {
+                    return@forEach
                 }
+
+                result +=
+                    StructuralMember(
+                        startNodeId =
+                            first.id,
+
+                        endNodeId =
+                            node.id,
+
+                        sourceElementId =
+                            element.id,
+
+                        // ------------------------------------
+                        // РАСЧЁТНЫЕ ХАРАКТЕРИСТИКИ
+                        // ------------------------------------
+
+                        area =
+                            element.areaM2,
+
+                        elasticModulus =
+                            element.elasticModulusKnPerM2,
+
+                        // Массу соединителя пока не
+                        // дублируем между несколькими
+                        // расчётными стержнями.
+                        massKg =
+                            0.0,
+
+                        maxDistributedLoadKnPerM =
+                            element.maxDistributedLoad
+                                ?: 0.0,
+
+                        maxPointLoadKn =
+                            element.maxPointLoad
+                                ?: 0.0
+                    )
             }
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // PIXELS -> METERS
-    // --------------------------------------------------------
+    // ========================================================
 
     private fun pixelsToMeters(
         pixels: Double
@@ -572,17 +620,23 @@ private class NodeUnionFind(
     ) {
 
         val firstRoot =
-            find(first)
+            find(
+                first
+            )
 
         val secondRoot =
-            find(second)
+            find(
+                second
+            )
 
         if (
             firstRoot !=
             secondRoot
         ) {
 
-            parent[secondRoot] =
+            parent[
+                secondRoot
+            ] =
                 firstRoot
         }
     }
@@ -685,10 +739,14 @@ fun StructuralModel.findNearlyCoincidentNodes(
         ) {
 
             val first =
-                nodes[firstIndex]
+                nodes[
+                    firstIndex
+                ]
 
             val second =
-                nodes[secondIndex]
+                nodes[
+                    secondIndex
+                ]
 
             val dx =
                 first.x -
@@ -699,8 +757,10 @@ fun StructuralModel.findNearlyCoincidentNodes(
                     second.y
 
             if (
-                abs(dx) <= toleranceMeters &&
-                abs(dy) <= toleranceMeters
+                abs(dx) <=
+                    toleranceMeters &&
+                abs(dy) <=
+                    toleranceMeters
             ) {
 
                 val distance =
