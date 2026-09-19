@@ -8,8 +8,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.weight
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -20,9 +20,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import com.trussload.calculator.assembly.AssemblyElement
@@ -55,45 +58,69 @@ fun TrussAssemblyScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(
+                MaterialTheme.colorScheme.background
+            )
     ) {
+
+        // ====================================================
+        // ЗАГОЛОВОК
+        // ====================================================
 
         Surface(
             modifier = Modifier.fillMaxWidth(),
             tonalElevation = 2.dp
         ) {
+
             Column(
                 modifier = Modifier.padding(
                     horizontal = 12.dp,
                     vertical = 8.dp
                 )
             ) {
+
                 Text(
                     text = "Конструктор фермы",
                     style = MaterialTheme.typography.titleLarge
                 )
 
                 Text(
-                    text = "V3.4 • выбор и свободное перемещение",
+                    text = "V4 • визуальная сборка",
                     style = MaterialTheme.typography.bodySmall
                 )
             }
         }
 
+        // ====================================================
+        // БИБЛИОТЕКА
+        // ====================================================
+
         TrussComponentLibrary(
             modifier = Modifier.fillMaxWidth(),
             onAddElement = { item ->
 
-                val index = assembly.elements.size % 5
+                val index =
+                    assembly.elements.size % 6
 
-                assembly = addLibraryElement(
-                    assembly = assembly,
-                    item = item,
-                    x = 180f + index * 25f,
-                    y = 220f + index * 25f
-                )
+                val startX =
+                    180f + index * 24f
+
+                val startY =
+                    180f + index * 30f
+
+                assembly =
+                    addLibraryElement(
+                        assembly = assembly,
+                        item = item,
+                        x = startX,
+                        y = startY
+                    )
             }
         )
+
+        // ====================================================
+        // УПРАВЛЕНИЕ
+        // ====================================================
 
         AssemblyToolbar(
             assembly = assembly,
@@ -103,25 +130,33 @@ fun TrussAssemblyScreen() {
             modifier = Modifier.fillMaxWidth()
         )
 
+        // ====================================================
+        // СТАТУС
+        // ====================================================
+
         AssemblyStatusBar(
             assembly = assembly
         )
 
-        AssemblyCanvas(
+        // ====================================================
+        // РАБОЧЕЕ ПОЛЕ
+        // ====================================================
+
+        AssemblyWorkspaceCanvas(
             assembly = assembly,
             onAssemblyChange = {
                 assembly = it
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(520.dp)
+                .weight(1f)
                 .padding(8.dp)
         )
     }
 }
 
 // ============================================================
-// СТРОКА СОСТОЯНИЯ
+// СТАТУСНАЯ ПАНЕЛЬ
 // ============================================================
 
 @Composable
@@ -141,43 +176,48 @@ private fun AssemblyStatusBar(
                     horizontal = 12.dp,
                     vertical = 6.dp
                 ),
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement =
+                Arrangement.SpaceBetween
         ) {
 
-            StatusItem(
+            StatusValue(
                 title = "Длина",
-                value = "%.1f м".format(
-                    assembly.totalStraightLength
-                )
+                value =
+                    "%.1f м".format(
+                        assembly.totalStraightLength
+                    )
             )
 
-            StatusItem(
+            StatusValue(
                 title = "Секции",
-                value = assembly
-                    .straightSectionCount
-                    .toString()
+                value =
+                    assembly
+                        .straightSectionCount
+                        .toString()
             )
 
-            StatusItem(
-                title = "Соединители",
-                value = assembly
-                    .connectorCount
-                    .toString()
+            StatusValue(
+                title = "Блоки",
+                value =
+                    assembly
+                        .connectorCount
+                        .toString()
             )
 
-            StatusItem(
+            StatusValue(
                 title = "Стыки",
-                value = assembly
-                    .connections
-                    .size
-                    .toString()
+                value =
+                    assembly
+                        .connections
+                        .size
+                        .toString()
             )
         }
     }
 }
 
 @Composable
-private fun StatusItem(
+private fun StatusValue(
     title: String,
     value: String
 ) {
@@ -201,57 +241,66 @@ private fun StatusItem(
 // ============================================================
 
 @Composable
-private fun AssemblyCanvas(
+private fun AssemblyWorkspaceCanvas(
     assembly: TrussAssembly,
     onAssemblyChange: (TrussAssembly) -> Unit,
     modifier: Modifier = Modifier
 ) {
 
     /*
-     * ВАЖНО:
+     * Важный момент:
      *
-     * pointerInput(Unit), а НЕ pointerInput(assembly).
+     * pointerInput(Unit) не пересоздаёт gesture detector
+     * после каждого пикселя перемещения.
      *
-     * Если использовать assembly как ключ,
-     * pointerInput пересоздаётся при каждом движении элемента.
-     * Из-за этого drag может обрываться.
+     * А rememberUpdatedState даёт обработчику жеста
+     * актуальную версию assembly.
+     *
+     * Это исправляет проблему, когда drag мог
+     * неожиданно прекращаться после небольшого движения.
      */
 
-    var latestAssembly by remember {
-        mutableStateOf(assembly)
-    }
+    val currentAssembly by
+        androidx.compose.runtime.rememberUpdatedState(
+            assembly
+        )
 
-    latestAssembly = assembly
+    val currentOnAssemblyChange by
+        androidx.compose.runtime.rememberUpdatedState(
+            onAssemblyChange
+        )
 
     Canvas(
         modifier = modifier
             .background(Color.White)
             .pointerInput(Unit) {
 
+                var draggingElementId: String? = null
+
                 detectDragGestures(
 
                     // ----------------------------------------
-                    // НАЧАЛО КАСАНИЯ
+                    // НАЧАЛО ПЕРЕМЕЩЕНИЯ
                     // ----------------------------------------
 
                     onDragStart = { position ->
 
-                        val current =
-                            latestAssembly
-
                         val found =
-                            current.findElementAt(
-                                x = position.x,
-                                y = position.y
-                            )
+                            currentAssembly
+                                .findElementAt(
+                                    x = position.x,
+                                    y = position.y
+                                )
 
-                        val updated =
-                            current.selectElement(
-                                elementId = found?.id
-                            )
+                        draggingElementId =
+                            found?.id
 
-                        latestAssembly = updated
-                        onAssemblyChange(updated)
+                        currentOnAssemblyChange(
+                            currentAssembly
+                                .selectElement(
+                                    elementId = found?.id
+                                )
+                        )
                     },
 
                     // ----------------------------------------
@@ -262,22 +311,20 @@ private fun AssemblyCanvas(
 
                         change.consume()
 
-                        val current =
-                            latestAssembly
-
-                        val selected =
-                            current.selectedElement
+                        val elementId =
+                            draggingElementId
                                 ?: return@detectDragGestures
 
-                        val moved =
-                            current.moveElement(
-                                elementId = selected.id,
+                        val latest =
+                            currentAssembly
+
+                        currentOnAssemblyChange(
+                            latest.moveElement(
+                                elementId = elementId,
                                 deltaX = dragAmount.x,
                                 deltaY = dragAmount.y
                             )
-
-                        latestAssembly = moved
-                        onAssemblyChange(moved)
+                        )
                     },
 
                     // ----------------------------------------
@@ -286,33 +333,33 @@ private fun AssemblyCanvas(
 
                     onDragEnd = {
 
-                        val current =
-                            latestAssembly
+                        val elementId =
+                            draggingElementId
 
-                        val selected =
-                            current.selectedElement
-                                ?: return@detectDragGestures
+                        if (elementId != null) {
 
-                        val snapped =
-                            current.snapElementIfNeeded(
-                                elementId = selected.id
+                            currentOnAssemblyChange(
+                                currentAssembly
+                                    .snapElementIfNeeded(
+                                        elementId = elementId
+                                    )
                             )
+                        }
 
-                        latestAssembly = snapped
-                        onAssemblyChange(snapped)
+                        draggingElementId = null
                     },
 
                     onDragCancel = {
-                        // Ничего не делаем.
-                        // Положение элемента сохраняется.
+
+                        draggingElementId = null
                     }
                 )
             }
     ) {
 
-        drawAssemblyGrid()
+        drawWorkspaceGrid()
 
-        drawConnections(
+        drawSavedConnections(
             assembly = assembly
         )
 
@@ -326,43 +373,45 @@ private fun AssemblyCanvas(
                     )
                 }
 
-                AssemblyElementType.CORNER_90,
-                AssemblyElementType.CORNER_135 -> {
-                    drawConnector(
+                AssemblyElementType.CORNER_90 -> {
+                    drawConnectorTruss(
                         element = element
                     )
                 }
 
-                AssemblyElementType.T_JUNCTION,
+                AssemblyElementType.CORNER_135 -> {
+                    drawConnectorTruss(
+                        element = element
+                    )
+                }
+
+                AssemblyElementType.T_JUNCTION -> {
+                    drawConnectorTruss(
+                        element = element
+                    )
+                }
+
                 AssemblyElementType.X_JUNCTION -> {
-                    drawConnector(
+                    drawConnectorTruss(
+                        element = element
+                    )
+                }
+
+                AssemblyElementType.CUBE -> {
+                    drawCube(
                         element = element
                     )
                 }
             }
 
-            drawElementNodes(
+            drawConnectionNodes(
                 element = element
             )
 
             if (element.selected) {
 
-                drawCircle(
-                    color = Color(0x22FF9800),
-                    radius = 42f,
-                    center = Offset(
-                        element.x,
-                        element.y
-                    )
-                )
-
-                drawCircle(
-                    color = Color(0xFFFF9800),
-                    radius = 5f,
-                    center = Offset(
-                        element.x,
-                        element.y
-                    )
+                drawSelection(
+                    element = element
                 )
             }
         }
@@ -373,32 +422,47 @@ private fun AssemblyCanvas(
 // СЕТКА
 // ============================================================
 
-private fun DrawScope.drawAssemblyGrid() {
+private fun DrawScope.drawWorkspaceGrid() {
 
-    val grid = 50f
+    val grid =
+        50f
 
-    var x = 0f
+    var x =
+        0f
 
     while (x <= size.width) {
 
         drawLine(
-            color = Color(0xFFE9E9E9),
-            start = Offset(x, 0f),
-            end = Offset(x, size.height),
+            color = Color(0xFFE7E9EC),
+            start = Offset(
+                x = x,
+                y = 0f
+            ),
+            end = Offset(
+                x = x,
+                y = size.height
+            ),
             strokeWidth = 1f
         )
 
         x += grid
     }
 
-    var y = 0f
+    var y =
+        0f
 
     while (y <= size.height) {
 
         drawLine(
-            color = Color(0xFFE9E9E9),
-            start = Offset(0f, y),
-            end = Offset(size.width, y),
+            color = Color(0xFFE7E9EC),
+            start = Offset(
+                x = 0f,
+                y = y
+            ),
+            end = Offset(
+                x = size.width,
+                y = y
+            ),
             strokeWidth = 1f
         )
 
@@ -407,7 +471,7 @@ private fun DrawScope.drawAssemblyGrid() {
 }
 
 // ============================================================
-// ПРЯМАЯ ФЕРМА
+// ПРЯМАЯ СЕКЦИЯ ФЕРМЫ
 // ============================================================
 
 private fun DrawScope.drawStraightTruss(
@@ -417,7 +481,8 @@ private fun DrawScope.drawStraightTruss(
     val endpoints =
         element.getStraightEndpoints(
             pixelsPerMeter =
-                AssemblyGeometryConfig.PIXELS_PER_METER
+                AssemblyGeometryConfig
+                    .PIXELS_PER_METER
         )
 
     val start =
@@ -437,31 +502,40 @@ private fun DrawScope.drawStraightTruss(
             element.rotation.toDouble()
         )
 
+    val halfHeight =
+        13f
+
     val normalX =
-        (-sin(radians) * 13.0).toFloat()
+        (
+            -sin(radians) *
+                halfHeight
+        ).toFloat()
 
     val normalY =
-        (cos(radians) * 13.0).toFloat()
+        (
+            cos(radians) *
+                halfHeight
+        ).toFloat()
 
-    val topStart =
+    val firstA =
         Offset(
             start.x + normalX,
             start.y + normalY
         )
 
-    val topEnd =
-        Offset(
-            end.x + normalX,
-            end.y + normalY
-        )
-
-    val bottomStart =
+    val firstB =
         Offset(
             start.x - normalX,
             start.y - normalY
         )
 
-    val bottomEnd =
+    val secondA =
+        Offset(
+            end.x + normalX,
+            end.y + normalY
+        )
+
+    val secondB =
         Offset(
             end.x - normalX,
             end.y - normalY
@@ -470,35 +544,41 @@ private fun DrawScope.drawStraightTruss(
     val color =
         elementColor(element)
 
+    // Два пояса
+
     drawLine(
         color = color,
-        start = topStart,
-        end = topEnd,
+        start = firstA,
+        end = secondA,
         strokeWidth = 5f,
         cap = StrokeCap.Round
     )
 
     drawLine(
         color = color,
-        start = bottomStart,
-        end = bottomEnd,
+        start = firstB,
+        end = secondB,
         strokeWidth = 5f,
         cap = StrokeCap.Round
     )
 
+    // Торцы
+
     drawLine(
         color = color,
-        start = topStart,
-        end = bottomStart,
+        start = firstA,
+        end = firstB,
         strokeWidth = 3f
     )
 
     drawLine(
         color = color,
-        start = topEnd,
-        end = bottomEnd,
+        start = secondA,
+        end = secondB,
         strokeWidth = 3f
     )
+
+    // Панели
 
     val panelCount =
         (element.length * 2.0)
@@ -507,40 +587,40 @@ private fun DrawScope.drawStraightTruss(
 
     for (index in 0 until panelCount) {
 
-        val fractionA =
+        val a =
             index.toFloat() /
                 panelCount.toFloat()
 
-        val fractionB =
+        val b =
             (index + 1).toFloat() /
                 panelCount.toFloat()
 
         val topA =
-            lerpOffset(
-                topStart,
-                topEnd,
-                fractionA
+            interpolate(
+                firstA,
+                secondA,
+                a
             )
 
         val topB =
-            lerpOffset(
-                topStart,
-                topEnd,
-                fractionB
+            interpolate(
+                firstA,
+                secondA,
+                b
             )
 
         val bottomA =
-            lerpOffset(
-                bottomStart,
-                bottomEnd,
-                fractionA
+            interpolate(
+                firstB,
+                secondB,
+                a
             )
 
         val bottomB =
-            lerpOffset(
-                bottomStart,
-                bottomEnd,
-                fractionB
+            interpolate(
+                firstB,
+                secondB,
+                b
             )
 
         if (index > 0) {
@@ -575,15 +655,145 @@ private fun DrawScope.drawStraightTruss(
 }
 
 // ============================================================
-// СОЕДИНИТЕЛИ
+// УГЛЫ / T / X
+//
+// Теперь блок рисуется по реальным узлам из Geometry,
+// поэтому T и X не имеют отдельной конфликтующей геометрии.
 // ============================================================
 
-private fun DrawScope.drawConnector(
+private fun DrawScope.drawConnectorTruss(
     element: AssemblyElement
 ) {
 
     val nodes =
         element.getNodes()
+
+    val center =
+        Offset(
+            element.x,
+            element.y
+        )
+
+    val color =
+        elementColor(element)
+
+    nodes.forEach { node ->
+
+        val end =
+            Offset(
+                node.x,
+                node.y
+            )
+
+        drawConnectorArm(
+            start = center,
+            end = end,
+            color = color
+        )
+    }
+
+    drawCircle(
+        color = color,
+        radius = 12f,
+        center = center
+    )
+}
+
+// ============================================================
+// ПЛЕЧО СОЕДИНИТЕЛЯ В ВИДЕ МИНИ-ФЕРМЫ
+// ============================================================
+
+private fun DrawScope.drawConnectorArm(
+    start: Offset,
+    end: Offset,
+    color: Color
+) {
+
+    val dx =
+        end.x - start.x
+
+    val dy =
+        end.y - start.y
+
+    val length =
+        kotlin.math.sqrt(
+            dx * dx +
+                dy * dy
+        )
+
+    if (length < 1f) {
+        return
+    }
+
+    val normalX =
+        -dy / length * 7f
+
+    val normalY =
+        dx / length * 7f
+
+    val startA =
+        Offset(
+            start.x + normalX,
+            start.y + normalY
+        )
+
+    val startB =
+        Offset(
+            start.x - normalX,
+            start.y - normalY
+        )
+
+    val endA =
+        Offset(
+            end.x + normalX,
+            end.y + normalY
+        )
+
+    val endB =
+        Offset(
+            end.x - normalX,
+            end.y - normalY
+        )
+
+    drawLine(
+        color = color,
+        start = startA,
+        end = endA,
+        strokeWidth = 4f
+    )
+
+    drawLine(
+        color = color,
+        start = startB,
+        end = endB,
+        strokeWidth = 4f
+    )
+
+    drawLine(
+        color = color,
+        start = startA,
+        end = endB,
+        strokeWidth = 2f
+    )
+
+    drawLine(
+        color = color,
+        start = endA,
+        end = endB,
+        strokeWidth = 2f
+    )
+}
+
+// ============================================================
+// КУБ
+//
+// Рисуем псевдо-3D блок.
+// Рабочие узлы подключения берутся из AssemblyGeometry.
+// ============================================================
+
+private fun DrawScope.drawCube(
+    element: AssemblyElement
+) {
 
     val color =
         elementColor(element)
@@ -594,46 +804,164 @@ private fun DrawScope.drawConnector(
             element.y
         )
 
-    nodes.forEach { node ->
+    val cubeSize =
+        AssemblyGeometryConfig.CUBE_SIZE
+
+    val half =
+        cubeSize / 2f
+
+    // Поворот квадрата в соответствии с rotation
+
+    val corners =
+        listOf(
+            rotateScreenPoint(
+                -half,
+                -half,
+                element.rotation
+            ),
+            rotateScreenPoint(
+                half,
+                -half,
+                element.rotation
+            ),
+            rotateScreenPoint(
+                half,
+                half,
+                element.rotation
+            ),
+            rotateScreenPoint(
+                -half,
+                half,
+                element.rotation
+            )
+        ).map {
+            Offset(
+                center.x + it.x,
+                center.y + it.y
+            )
+        }
+
+    val frontPath =
+        Path().apply {
+
+            moveTo(
+                corners[0].x,
+                corners[0].y
+            )
+
+            lineTo(
+                corners[1].x,
+                corners[1].y
+            )
+
+            lineTo(
+                corners[2].x,
+                corners[2].y
+            )
+
+            lineTo(
+                corners[3].x,
+                corners[3].y
+            )
+
+            close()
+        }
+
+    drawPath(
+        path = frontPath,
+        color = color,
+        style = Stroke(
+            width = 5f
+        )
+    )
+
+    // Смещение задней грани для эффекта объёма
+
+    val depth =
+        rotateScreenPoint(
+            12f,
+            -12f,
+            element.rotation
+        )
+
+    val backCorners =
+        corners.map {
+            Offset(
+                it.x + depth.x,
+                it.y + depth.y
+            )
+        }
+
+    val backPath =
+        Path().apply {
+
+            moveTo(
+                backCorners[0].x,
+                backCorners[0].y
+            )
+
+            lineTo(
+                backCorners[1].x,
+                backCorners[1].y
+            )
+
+            lineTo(
+                backCorners[2].x,
+                backCorners[2].y
+            )
+
+            lineTo(
+                backCorners[3].x,
+                backCorners[3].y
+            )
+
+            close()
+        }
+
+    drawPath(
+        path = backPath,
+        color = color,
+        style = Stroke(
+            width = 3f
+        )
+    )
+
+    for (index in 0..3) {
 
         drawLine(
             color = color,
-            start = center,
-            end = Offset(
-                node.x,
-                node.y
-            ),
-            strokeWidth = 10f,
-            cap = StrokeCap.Round
+            start = corners[index],
+            end = backCorners[index],
+            strokeWidth = 3f
         )
     }
 
+    // Центр
+
     drawCircle(
         color = color,
-        radius = 9f,
+        radius = 7f,
         center = center
     )
 }
 
 // ============================================================
-// УЗЛЫ
+// УЗЛЫ ПОДКЛЮЧЕНИЯ
 // ============================================================
 
-private fun DrawScope.drawElementNodes(
+private fun DrawScope.drawConnectionNodes(
     element: AssemblyElement
 ) {
 
     element.getNodes().forEach { node ->
 
-        val nodeColor =
-            if (element.selected) {
-                Color(0xFFFF5722)
-            } else {
-                Color(0xFFD32F2F)
-            }
-
         drawCircle(
-            color = nodeColor,
+            color =
+                if (element.selected) {
+                    Color(0xFFFF5722)
+                } else {
+                    Color(0xFFD32F2F)
+                },
             radius =
                 AssemblyGeometryConfig.NODE_RADIUS,
             center = Offset(
@@ -654,10 +982,77 @@ private fun DrawScope.drawElementNodes(
 }
 
 // ============================================================
+// ВЫДЕЛЕНИЕ
+// ============================================================
+
+private fun DrawScope.drawSelection(
+    element: AssemblyElement
+) {
+
+    if (
+        element.type ==
+        AssemblyElementType.STRAIGHT
+    ) {
+
+        // Для длинной фермы достаточно центрального маркера.
+
+        drawCircle(
+            color = Color(0x44FF9800),
+            radius = 25f,
+            center = Offset(
+                element.x,
+                element.y
+            )
+        )
+
+    } else {
+
+        val selectionSize =
+            if (
+                element.type ==
+                AssemblyElementType.CUBE
+            ) {
+                AssemblyGeometryConfig.CUBE_SIZE +
+                    30f
+            } else {
+                AssemblyGeometryConfig.CONNECTOR_SIZE *
+                    2f +
+                    30f
+            }
+
+        drawRect(
+            color = Color(0xFFFF9800),
+            topLeft = Offset(
+                element.x -
+                    selectionSize / 2f,
+                element.y -
+                    selectionSize / 2f
+            ),
+            size = Size(
+                selectionSize,
+                selectionSize
+            ),
+            style = Stroke(
+                width = 3f
+            )
+        )
+    }
+
+    drawCircle(
+        color = Color(0xFFFF9800),
+        radius = 5f,
+        center = Offset(
+            element.x,
+            element.y
+        )
+    )
+}
+
+// ============================================================
 // СОХРАНЁННЫЕ СТЫКИ
 // ============================================================
 
-private fun DrawScope.drawConnections(
+private fun DrawScope.drawSavedConnections(
     assembly: TrussAssembly
 ) {
 
@@ -696,10 +1091,16 @@ private fun DrawScope.drawConnections(
         val center =
             Offset(
                 x =
-                    (firstNode.x + secondNode.x) / 2f,
+                    (
+                        firstNode.x +
+                            secondNode.x
+                    ) / 2f,
 
                 y =
-                    (firstNode.y + secondNode.y) / 2f
+                    (
+                        firstNode.y +
+                            secondNode.y
+                    ) / 2f
             )
 
         drawCircle(
@@ -719,8 +1120,11 @@ private fun elementColor(
 ): Color {
 
     return if (element.selected) {
+
         Color(0xFFFF9800)
+
     } else {
+
         Color(0xFF1565C0)
     }
 }
@@ -729,7 +1133,7 @@ private fun elementColor(
 // ИНТЕРПОЛЯЦИЯ
 // ============================================================
 
-private fun lerpOffset(
+private fun interpolate(
     start: Offset,
     end: Offset,
     fraction: Float
@@ -745,5 +1149,37 @@ private fun lerpOffset(
             start.y +
                 (end.y - start.y) *
                 fraction
+    )
+}
+
+// ============================================================
+// ПОВОРОТ ТОЧКИ ДЛЯ ОТРИСОВКИ
+// ============================================================
+
+private fun rotateScreenPoint(
+    x: Float,
+    y: Float,
+    rotationDegrees: Float
+): Offset {
+
+    val radians =
+        Math.toRadians(
+            rotationDegrees.toDouble()
+        )
+
+    val cosine =
+        cos(radians).toFloat()
+
+    val sine =
+        sin(radians).toFloat()
+
+    return Offset(
+        x =
+            x * cosine -
+                y * sine,
+
+        y =
+            x * sine +
+                y * cosine
     )
 }
