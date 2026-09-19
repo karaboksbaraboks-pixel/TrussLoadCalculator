@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -128,7 +129,7 @@ fun TrussAssemblyScreen() {
         )
 
         // ====================================================
-        // ИНФОРМАЦИЯ О СБОРКЕ
+        // ИНФОРМАЦИЯ
         // ====================================================
 
         AssemblyStatusBar(
@@ -151,6 +152,7 @@ fun TrussAssemblyScreen() {
         )
     }
 }
+
 
 // ============================================================
 // ИНФОРМАЦИЯ О СБОРКЕ
@@ -245,6 +247,7 @@ private fun AssemblyStatusBar(
     }
 }
 
+
 // ============================================================
 // РАБОЧЕЕ ПОЛЕ
 // ============================================================
@@ -256,38 +259,78 @@ private fun AssemblyCanvas(
     modifier: Modifier = Modifier
 ) {
 
+    /*
+     * ВАЖНО:
+     *
+     * pointerInput больше НЕ зависит от assembly.
+     *
+     * Раньше использовалось:
+     *
+     *     .pointerInput(assembly)
+     *
+     * Из-за этого при каждом изменении координат элемента
+     * Compose мог перезапускать обработчик жеста.
+     *
+     * Поэтому длинное перетаскивание обрывалось.
+     *
+     * rememberUpdatedState позволяет обработчику жеста
+     * всегда получать самое свежее состояние assembly,
+     * не перезапуская сам gesture detector.
+     */
+
+    val currentAssembly by rememberUpdatedState(assembly)
+
     Canvas(
         modifier = modifier
             .background(Color.White)
-            .pointerInput(assembly) {
+            .pointerInput(Unit) {
 
                 detectDragGestures(
 
+                    // ----------------------------------------
+                    // НАЧАЛО ПЕРЕТАСКИВАНИЯ
+                    // ----------------------------------------
+
                     onDragStart = { position ->
 
+                        val latestAssembly =
+                            currentAssembly
+
                         val found =
-                            assembly.findElementAt(
+                            latestAssembly.findElementAt(
                                 x = position.x,
                                 y = position.y
                             )
 
                         onAssemblyChange(
-                            assembly.selectElement(
+                            latestAssembly.selectElement(
                                 elementId = found?.id
                             )
                         )
                     },
 
+                    // ----------------------------------------
+                    // ПЕРЕТАСКИВАНИЕ
+                    // ----------------------------------------
+
                     onDrag = { change, dragAmount ->
 
                         change.consume()
 
+                        /*
+                         * Берём актуальную сборку НА КАЖДОМ
+                         * событии движения пальца.
+                         */
+
+                        val latestAssembly =
+                            currentAssembly
+
                         val selected =
-                            assembly.selectedElement
+                            latestAssembly.selectedElement
                                 ?: return@detectDragGestures
 
                         onAssemblyChange(
-                            assembly.moveElement(
+                            latestAssembly.moveElement(
                                 elementId = selected.id,
                                 deltaX = dragAmount.x,
                                 deltaY = dragAmount.y
@@ -295,66 +338,111 @@ private fun AssemblyCanvas(
                         )
                     },
 
+                    // ----------------------------------------
+                    // КОНЕЦ ПЕРЕТАСКИВАНИЯ
+                    // ----------------------------------------
+
                     onDragEnd = {
 
+                        val latestAssembly =
+                            currentAssembly
+
                         val selected =
-                            assembly.selectedElement
+                            latestAssembly.selectedElement
                                 ?: return@detectDragGestures
 
+                        /*
+                         * После отпускания пальца пытаемся
+                         * защёлкнуть элемент к ближайшему узлу.
+                         */
+
                         onAssemblyChange(
-                            assembly.snapElementIfNeeded(
+                            latestAssembly.snapElementIfNeeded(
                                 elementId = selected.id
                             )
                         )
+                    },
+
+                    // ----------------------------------------
+                    // ОТМЕНА ЖЕСТА
+                    // ----------------------------------------
+
+                    onDragCancel = {
+                        // Ничего не делаем.
                     }
                 )
             }
     ) {
 
+        // ====================================================
+        // СЕТКА
+        // ====================================================
+
         drawAssemblyGrid()
+
+        // ====================================================
+        // СОХРАНЁННЫЕ СОЕДИНЕНИЯ
+        // ====================================================
 
         drawConnections(
             assembly = assembly
         )
+
+        // ====================================================
+        // ЭЛЕМЕНТЫ
+        // ====================================================
 
         assembly.elements.forEach { element ->
 
             when (element.type) {
 
                 AssemblyElementType.STRAIGHT -> {
+
                     drawStraightTruss(
                         element = element
                     )
                 }
 
                 AssemblyElementType.CORNER_90 -> {
+
                     drawCorner(
                         element = element
                     )
                 }
 
                 AssemblyElementType.CORNER_135 -> {
+
                     drawCorner(
                         element = element
                     )
                 }
 
                 AssemblyElementType.T_JUNCTION -> {
+
                     drawMultiConnector(
                         element = element
                     )
                 }
 
                 AssemblyElementType.X_JUNCTION -> {
+
                     drawMultiConnector(
                         element = element
                     )
                 }
             }
 
+            // ----------------------------------------
+            // ТОЧКИ СОЕДИНЕНИЯ
+            // ----------------------------------------
+
             drawElementNodes(
                 element = element
             )
+
+            // ----------------------------------------
+            // ВЫДЕЛЕННЫЙ ЭЛЕМЕНТ
+            // ----------------------------------------
 
             if (element.selected) {
 
@@ -379,6 +467,7 @@ private fun AssemblyCanvas(
         }
     }
 }
+
 
 // ============================================================
 // СЕТКА
@@ -428,6 +517,7 @@ private fun DrawScope.drawAssemblyGrid() {
         y += grid
     }
 }
+
 
 // ============================================================
 // ПРЯМАЯ СЕКЦИЯ ФЕРМЫ
@@ -497,7 +587,9 @@ private fun DrawScope.drawStraightTruss(
             element = element
         )
 
-    // Верхний пояс
+    // ====================================================
+    // ВЕРХНИЙ ПОЯС
+    // ====================================================
 
     drawLine(
         color = color,
@@ -507,7 +599,9 @@ private fun DrawScope.drawStraightTruss(
         cap = StrokeCap.Round
     )
 
-    // Нижний пояс
+    // ====================================================
+    // НИЖНИЙ ПОЯС
+    // ====================================================
 
     drawLine(
         color = color,
@@ -517,7 +611,9 @@ private fun DrawScope.drawStraightTruss(
         cap = StrokeCap.Round
     )
 
-    // Торцы
+    // ====================================================
+    // ТОРЦЫ
+    // ====================================================
 
     drawLine(
         color = color,
@@ -533,7 +629,9 @@ private fun DrawScope.drawStraightTruss(
         strokeWidth = 3f
     )
 
-    // Количество панелей фермы
+    // ====================================================
+    // ПАНЕЛИ
+    // ====================================================
 
     val panelCount =
         (element.length * 2.0)
@@ -578,7 +676,9 @@ private fun DrawScope.drawStraightTruss(
                 fraction = fractionB
             )
 
-        // Вертикальная стойка панели
+        // ----------------------------------------
+        // ВЕРТИКАЛЬНАЯ СТОЙКА
+        // ----------------------------------------
 
         if (index > 0) {
 
@@ -590,7 +690,9 @@ private fun DrawScope.drawStraightTruss(
             )
         }
 
-        // Раскос
+        // ----------------------------------------
+        // РАСКОС
+        // ----------------------------------------
 
         if (index % 2 == 0) {
 
@@ -613,8 +715,9 @@ private fun DrawScope.drawStraightTruss(
     }
 }
 
+
 // ============================================================
-// УГЛОВОЙ СОЕДИНИТЕЛЬ
+// УГЛОВЫЕ СОЕДИНИТЕЛИ 90° / 135°
 // ============================================================
 
 private fun DrawScope.drawCorner(
@@ -660,8 +763,9 @@ private fun DrawScope.drawCorner(
     )
 }
 
+
 // ============================================================
-// T И X СОЕДИНИТЕЛИ
+// T / X СОЕДИНИТЕЛИ
 // ============================================================
 
 private fun DrawScope.drawMultiConnector(
@@ -703,6 +807,7 @@ private fun DrawScope.drawMultiConnector(
     )
 }
 
+
 // ============================================================
 // ТОЧКИ СОЕДИНЕНИЯ
 // ============================================================
@@ -717,8 +822,11 @@ private fun DrawScope.drawElementNodes(
 
             val nodeColor =
                 if (element.selected) {
+
                     Color(0xFFFF5722)
+
                 } else {
+
                     Color(0xFFD32F2F)
                 }
 
@@ -743,6 +851,7 @@ private fun DrawScope.drawElementNodes(
         }
 }
 
+
 // ============================================================
 // СОХРАНЁННЫЕ СОЕДИНЕНИЯ
 // ============================================================
@@ -755,22 +864,28 @@ private fun DrawScope.drawConnections(
 
         val firstElement =
             assembly.elements.firstOrNull {
+
                 it.id ==
                     connection.firstElementId
+
             } ?: return@forEach
 
         val secondElement =
             assembly.elements.firstOrNull {
+
                 it.id ==
                     connection.secondElementId
+
             } ?: return@forEach
 
         val firstNode =
             firstElement
                 .getNodes()
                 .firstOrNull {
+
                     it.nodeIndex ==
                         connection.firstNodeIndex
+
                 }
                 ?: return@forEach
 
@@ -778,13 +893,12 @@ private fun DrawScope.drawConnections(
             secondElement
                 .getNodes()
                 .firstOrNull {
+
                     it.nodeIndex ==
                         connection.secondNodeIndex
+
                 }
                 ?: return@forEach
-
-        // После snap эти точки практически совпадают.
-        // Зелёный круг показывает сохранённое соединение.
 
         val center =
             Offset(
@@ -801,6 +915,10 @@ private fun DrawScope.drawConnections(
                     ) / 2f
             )
 
+        // ----------------------------------------
+        // ЗЕЛЁНАЯ ТОЧКА = СОХРАНЁННЫЙ СТЫК
+        // ----------------------------------------
+
         drawCircle(
             color = Color(0xFF43A047),
             radius = 6f,
@@ -808,6 +926,7 @@ private fun DrawScope.drawConnections(
         )
     }
 }
+
 
 // ============================================================
 // ЦВЕТ ЭЛЕМЕНТА
@@ -827,8 +946,9 @@ private fun elementColor(
     }
 }
 
+
 // ============================================================
-// ПРОМЕЖУТОЧНАЯ ТОЧКА
+// ЛИНЕЙНАЯ ИНТЕРПОЛЯЦИЯ
 // ============================================================
 
 private fun lerpOffset(
