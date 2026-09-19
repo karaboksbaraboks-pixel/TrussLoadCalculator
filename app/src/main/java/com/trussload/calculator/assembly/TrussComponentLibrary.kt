@@ -22,22 +22,74 @@ import java.util.UUID
 // ============================================================
 
 data class LibraryItem(
+
     val title: String,
+
     val type: AssemblyElementType,
 
+    // --------------------------------------------------------
+    // ГЕОМЕТРИЯ
+    // --------------------------------------------------------
+
     val length: Double = 0.0,
+
     val width: Double = 0.29,
+
     val height: Double = 0.29,
+
+    // --------------------------------------------------------
+    // МАССА
+    // --------------------------------------------------------
 
     val weight: Double = 0.0,
 
+    // --------------------------------------------------------
+    // ПРОИЗВОДИТЕЛЬ
+    // --------------------------------------------------------
+
     val manufacturer: String = "",
+
     val series: String = "",
+
     val article: String = "",
 
+    // --------------------------------------------------------
+    // ДОПУСТИМЫЕ НАГРУЗКИ
+    // --------------------------------------------------------
+
     val maxDistributedLoad: Double? = null,
-    val maxPointLoad: Double? = null
+
+    val maxPointLoad: Double? = null,
+
+    // --------------------------------------------------------
+    // РАСЧЁТНЫЕ ХАРАКТЕРИСТИКИ
+    //
+    // areaM2:
+    // эквивалентная площадь сечения в м²
+    //
+    // elasticModulusKnPerM2:
+    // модуль упругости в кН/м²
+    // --------------------------------------------------------
+
+    val areaM2: Double? = null,
+
+    val elasticModulusKnPerM2: Double? = null
 )
+
+// ============================================================
+// СТАНДАРТНЫЕ РАСЧЁТНЫЕ ЗНАЧЕНИЯ
+//
+// Пока используем одинаковые значения для стандартных секций.
+//
+// В дальнейшем они будут заменяться характеристиками
+// конкретной модели фермы производителя.
+// ============================================================
+
+private const val DEFAULT_TRUSS_AREA_M2 =
+    0.001
+
+private const val DEFAULT_ALUMINIUM_ELASTIC_MODULUS_KN_PER_M2 =
+    70_000_000.0
 
 // ============================================================
 // СТАНДАРТНАЯ БИБЛИОТЕКА
@@ -53,31 +105,51 @@ val defaultTrussLibrary =
         LibraryItem(
             title = "0.5 м",
             type = AssemblyElementType.STRAIGHT,
-            length = 0.5
+            length = 0.5,
+            areaM2 =
+                DEFAULT_TRUSS_AREA_M2,
+            elasticModulusKnPerM2 =
+                DEFAULT_ALUMINIUM_ELASTIC_MODULUS_KN_PER_M2
         ),
 
         LibraryItem(
             title = "1 м",
             type = AssemblyElementType.STRAIGHT,
-            length = 1.0
+            length = 1.0,
+            areaM2 =
+                DEFAULT_TRUSS_AREA_M2,
+            elasticModulusKnPerM2 =
+                DEFAULT_ALUMINIUM_ELASTIC_MODULUS_KN_PER_M2
         ),
 
         LibraryItem(
             title = "2 м",
             type = AssemblyElementType.STRAIGHT,
-            length = 2.0
+            length = 2.0,
+            areaM2 =
+                DEFAULT_TRUSS_AREA_M2,
+            elasticModulusKnPerM2 =
+                DEFAULT_ALUMINIUM_ELASTIC_MODULUS_KN_PER_M2
         ),
 
         LibraryItem(
             title = "3 м",
             type = AssemblyElementType.STRAIGHT,
-            length = 3.0
+            length = 3.0,
+            areaM2 =
+                DEFAULT_TRUSS_AREA_M2,
+            elasticModulusKnPerM2 =
+                DEFAULT_ALUMINIUM_ELASTIC_MODULUS_KN_PER_M2
         ),
 
         LibraryItem(
             title = "4 м",
             type = AssemblyElementType.STRAIGHT,
-            length = 4.0
+            length = 4.0,
+            areaM2 =
+                DEFAULT_TRUSS_AREA_M2,
+            elasticModulusKnPerM2 =
+                DEFAULT_ALUMINIUM_ELASTIC_MODULUS_KN_PER_M2
         ),
 
         // ----------------------------------------------------
@@ -86,12 +158,20 @@ val defaultTrussLibrary =
 
         LibraryItem(
             title = "90°",
-            type = AssemblyElementType.CORNER_90
+            type = AssemblyElementType.CORNER_90,
+            areaM2 =
+                DEFAULT_TRUSS_AREA_M2,
+            elasticModulusKnPerM2 =
+                DEFAULT_ALUMINIUM_ELASTIC_MODULUS_KN_PER_M2
         ),
 
         LibraryItem(
             title = "135°",
-            type = AssemblyElementType.CORNER_135
+            type = AssemblyElementType.CORNER_135,
+            areaM2 =
+                DEFAULT_TRUSS_AREA_M2,
+            elasticModulusKnPerM2 =
+                DEFAULT_ALUMINIUM_ELASTIC_MODULUS_KN_PER_M2
         ),
 
         // ----------------------------------------------------
@@ -100,12 +180,20 @@ val defaultTrussLibrary =
 
         LibraryItem(
             title = "T",
-            type = AssemblyElementType.T_JUNCTION
+            type = AssemblyElementType.T_JUNCTION,
+            areaM2 =
+                DEFAULT_TRUSS_AREA_M2,
+            elasticModulusKnPerM2 =
+                DEFAULT_ALUMINIUM_ELASTIC_MODULUS_KN_PER_M2
         ),
 
         LibraryItem(
             title = "X",
-            type = AssemblyElementType.X_JUNCTION
+            type = AssemblyElementType.X_JUNCTION,
+            areaM2 =
+                DEFAULT_TRUSS_AREA_M2,
+            elasticModulusKnPerM2 =
+                DEFAULT_ALUMINIUM_ELASTIC_MODULUS_KN_PER_M2
         ),
 
         // ----------------------------------------------------
@@ -116,7 +204,11 @@ val defaultTrussLibrary =
             title = "Куб",
             type = AssemblyElementType.CUBE,
             width = 0.29,
-            height = 0.29
+            height = 0.29,
+            areaM2 =
+                DEFAULT_TRUSS_AREA_M2,
+            elasticModulusKnPerM2 =
+                DEFAULT_ALUMINIUM_ELASTIC_MODULUS_KN_PER_M2
         )
     )
 
@@ -136,19 +228,26 @@ fun TrussComponentLibrary(
     ) {
 
         Column(
-            modifier = Modifier.padding(
-                horizontal = 12.dp,
-                vertical = 8.dp
-            )
+            modifier =
+                Modifier.padding(
+                    horizontal = 12.dp,
+                    vertical = 8.dp
+                )
         ) {
 
             Text(
                 text = "Элементы",
-                style = MaterialTheme.typography.titleSmall
+                style =
+                    MaterialTheme
+                        .typography
+                        .titleSmall
             )
 
             Spacer(
-                modifier = Modifier.height(6.dp)
+                modifier =
+                    Modifier.height(
+                        6.dp
+                    )
             )
 
             Row(
@@ -156,20 +255,26 @@ fun TrussComponentLibrary(
                     Modifier.horizontalScroll(
                         rememberScrollState()
                     ),
+
                 horizontalArrangement =
-                    Arrangement.spacedBy(8.dp)
+                    Arrangement.spacedBy(
+                        8.dp
+                    )
             ) {
 
                 defaultTrussLibrary.forEach { item ->
 
                     Button(
                         onClick = {
-                            onAddElement(item)
+                            onAddElement(
+                                item
+                            )
                         }
                     ) {
 
                         Text(
-                            text = item.title
+                            text =
+                                item.title
                         )
                     }
                 }
@@ -212,40 +317,61 @@ fun createElementFromLibrary(
 
     return AssemblyElement(
 
-        id = UUID.randomUUID().toString(),
+        id =
+            UUID
+                .randomUUID()
+                .toString(),
 
-        type = item.type,
+        type =
+            item.type,
 
-        name = elementName,
+        name =
+            elementName,
 
-        length = item.length,
+        length =
+            item.length,
 
-        width = item.width,
+        width =
+            item.width,
 
-        height = item.height,
+        height =
+            item.height,
 
-        weight = item.weight,
+        weight =
+            item.weight,
 
-        x = x,
+        x =
+            x,
 
-        y = y,
+        y =
+            y,
 
-        rotation = 0f,
+        rotation =
+            0f,
 
-        // Новый элемент сразу выбран
-        selected = true,
+        selected =
+            true,
 
-        manufacturer = item.manufacturer,
+        manufacturer =
+            item.manufacturer,
 
-        series = item.series,
+        series =
+            item.series,
 
-        article = item.article,
+        article =
+            item.article,
 
         maxDistributedLoad =
             item.maxDistributedLoad,
 
         maxPointLoad =
-            item.maxPointLoad
+            item.maxPointLoad,
+
+        areaM2 =
+            item.areaM2,
+
+        elasticModulusKnPerM2 =
+            item.elasticModulusKnPerM2
     )
 }
 
@@ -260,8 +386,6 @@ fun addLibraryElement(
     y: Float = 0f
 ): TrussAssembly {
 
-    // Снимаем выделение со старых элементов.
-
     val unselectedElements =
         assembly.elements.map { element ->
 
@@ -269,8 +393,6 @@ fun addLibraryElement(
                 selected = false
             )
         }
-
-    // Создаём новый элемент.
 
     val newElement =
         createElementFromLibrary(
