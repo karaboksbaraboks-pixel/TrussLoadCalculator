@@ -25,20 +25,16 @@ data class LibraryItem(
     val title: String,
     val type: AssemblyElementType,
 
-    // Размеры, м
     val length: Double = 0.0,
     val width: Double = 0.29,
     val height: Double = 0.29,
 
-    // Масса, кг
     val weight: Double = 0.0,
 
-    // Информация о производителе
     val manufacturer: String = "",
     val series: String = "",
     val article: String = "",
 
-    // Нагрузочные характеристики
     val maxDistributedLoad: Double? = null,
     val maxPointLoad: Double? = null
 )
@@ -85,7 +81,7 @@ val defaultTrussLibrary =
         ),
 
         // ----------------------------------------------------
-        // СОЕДИНИТЕЛИ
+        // УГЛОВЫЕ БЛОКИ
         // ----------------------------------------------------
 
         LibraryItem(
@@ -98,6 +94,10 @@ val defaultTrussLibrary =
             type = AssemblyElementType.CORNER_135
         ),
 
+        // ----------------------------------------------------
+        // МНОГОНАПРАВЛЕННЫЕ БЛОКИ
+        // ----------------------------------------------------
+
         LibraryItem(
             title = "T",
             type = AssemblyElementType.T_JUNCTION
@@ -106,6 +106,17 @@ val defaultTrussLibrary =
         LibraryItem(
             title = "X",
             type = AssemblyElementType.X_JUNCTION
+        ),
+
+        // ----------------------------------------------------
+        // КУБ
+        // ----------------------------------------------------
+
+        LibraryItem(
+            title = "Куб",
+            type = AssemblyElementType.CUBE,
+            width = 0.29,
+            height = 0.29
         )
     )
 
@@ -125,24 +136,19 @@ fun TrussComponentLibrary(
     ) {
 
         Column(
-            modifier =
-                Modifier.padding(
-                    horizontal = 12.dp,
-                    vertical = 8.dp
-                )
+            modifier = Modifier.padding(
+                horizontal = 12.dp,
+                vertical = 8.dp
+            )
         ) {
 
             Text(
                 text = "Элементы",
-                style =
-                    MaterialTheme
-                        .typography
-                        .titleSmall
+                style = MaterialTheme.typography.titleSmall
             )
 
             Spacer(
-                modifier =
-                    Modifier.height(6.dp)
+                modifier = Modifier.height(6.dp)
             )
 
             Row(
@@ -199,52 +205,41 @@ fun createElementFromLibrary(
 
             AssemblyElementType.X_JUNCTION ->
                 "X-соединитель"
+
+            AssemblyElementType.CUBE ->
+                "Куб"
         }
 
     return AssemblyElement(
 
-        id =
-            UUID.randomUUID()
-                .toString(),
+        id = UUID.randomUUID().toString(),
 
-        type =
-            item.type,
+        type = item.type,
 
-        name =
-            elementName,
+        name = elementName,
 
-        length =
-            item.length,
+        length = item.length,
 
-        width =
-            item.width,
+        width = item.width,
 
-        height =
-            item.height,
+        height = item.height,
 
-        weight =
-            item.weight,
+        weight = item.weight,
 
-        x =
-            x,
+        x = x,
 
-        y =
-            y,
+        y = y,
 
-        rotation =
-            0f,
+        rotation = 0f,
 
-        selected =
-            true,
+        // Новый элемент сразу выбран
+        selected = true,
 
-        manufacturer =
-            item.manufacturer,
+        manufacturer = item.manufacturer,
 
-        series =
-            item.series,
+        series = item.series,
 
-        article =
-            item.article,
+        article = item.article,
 
         maxDistributedLoad =
             item.maxDistributedLoad,
@@ -255,7 +250,7 @@ fun createElementFromLibrary(
 }
 
 // ============================================================
-// ДОБАВЛЕНИЕ ЭЛЕМЕНТА
+// ДОБАВЛЕНИЕ ЭЛЕМЕНТА В СБОРКУ
 // ============================================================
 
 fun addLibraryElement(
@@ -267,7 +262,7 @@ fun addLibraryElement(
 
     // Снимаем выделение со старых элементов.
 
-    val oldElements =
+    val unselectedElements =
         assembly.elements.map { element ->
 
             element.copy(
@@ -275,7 +270,7 @@ fun addLibraryElement(
             )
         }
 
-    // Новый элемент сразу выбран.
+    // Создаём новый элемент.
 
     val newElement =
         createElementFromLibrary(
@@ -286,7 +281,7 @@ fun addLibraryElement(
 
     return assembly.copy(
         elements =
-            oldElements +
+            unselectedElements +
                 newElement
     )
 }
