@@ -1,11 +1,17 @@
 package com.trussload.calculator.models
 
+import java.util.UUID
+
 // ============================================================
 // УЗЕЛ РАСЧЁТНОЙ СХЕМЫ
 // ============================================================
 
 data class StructuralNode(
-    val id: String,
+
+    // ID создаётся автоматически.
+    // Поэтому AssemblyStructuralConverter не обязан
+    // передавать id вручную.
+    val id: String = UUID.randomUUID().toString(),
 
     // Координаты узла в метрах
     val x: Double,
@@ -25,20 +31,45 @@ data class StructuralNode(
 // ============================================================
 
 data class StructuralMember(
-    val id: String,
+
+    // ID создаётся автоматически
+    val id: String = UUID.randomUUID().toString(),
 
     val startNodeId: String,
     val endNodeId: String,
 
-    // Элемент визуальной сборки, из которого получен стержень
+    // Элемент визуальной сборки,
+    // из которого получен расчётный стержень
     val sourceElementId: String? = null,
 
-    // Геометрические / физические параметры
+    // --------------------------------------------------------
+    // ГЕОМЕТРИЧЕСКИЕ / ФИЗИЧЕСКИЕ ПАРАМЕТРЫ
+    // --------------------------------------------------------
+
     val area: Double? = null,
+
     val elasticModulus: Double? = null,
 
+    // --------------------------------------------------------
+    // МАССА
+    // --------------------------------------------------------
+
     // Масса элемента, кг
-    val massKg: Double = 0.0
+    val massKg: Double = 0.0,
+
+    // --------------------------------------------------------
+    // ДОПУСТИМЫЕ НАГРУЗКИ
+    //
+    // Внутри расчётного ядра нагрузки хранятся в кН.
+    // Пользовательский интерфейс впоследствии сможет
+    // отображать их как кН или кг.
+    // --------------------------------------------------------
+
+    // Максимальная распределённая нагрузка, кН/м
+    val maxDistributedLoadKnPerM: Double = 0.0,
+
+    // Максимальная точечная нагрузка, кН
+    val maxPointLoadKn: Double = 0.0
 )
 
 // ============================================================
@@ -46,11 +77,12 @@ data class StructuralMember(
 // ============================================================
 
 data class StructuralLoad(
-    val id: String,
+
+    val id: String = UUID.randomUUID().toString(),
 
     val nodeId: String,
 
-    // Силы хранятся внутри расчётного ядра в кН
+    // Силы внутри расчётного ядра хранятся в кН
     val forceXKn: Double = 0.0,
     val forceYKn: Double = 0.0
 )
@@ -60,6 +92,10 @@ data class StructuralLoad(
 // ============================================================
 
 data class StructuralModel(
+
+    // Название визуальной/расчётной сборки
+    val name: String = "Новая сборка",
+
     val nodes: List<StructuralNode> = emptyList(),
 
     val members: List<StructuralMember> = emptyList(),
@@ -120,19 +156,22 @@ data class StructuralModel(
     // --------------------------------------------------------
 
     val nodeCount: Int
-        get() = nodes.size
+        get() =
+            nodes.size
 
     // --------------------------------------------------------
     // КОЛИЧЕСТВО СТЕРЖНЕЙ
     // --------------------------------------------------------
 
     val memberCount: Int
-        get() = members.size
+        get() =
+            members.size
 
     // --------------------------------------------------------
     // КОЛИЧЕСТВО НАГРУЗОК
     // --------------------------------------------------------
 
     val loadCount: Int
-        get() = loads.size
+        get() =
+            loads.size
 }
