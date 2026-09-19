@@ -25,6 +25,44 @@ fun AssemblyToolbar(
     val selected =
         assembly.selectedElement
 
+    // ========================================================
+    // ОБЩАЯ ФУНКЦИЯ ПОВОРОТА
+    // ========================================================
+
+    fun rotateSelected(
+        degrees: Float
+    ) {
+
+        val element =
+            assembly.selectedElement
+                ?: return
+
+        /*
+         * rotateElement() уже удаляет старые соединения
+         * поворачиваемого элемента.
+         */
+
+        val rotatedAssembly =
+            assembly.rotateElement(
+                elementId = element.id,
+                degrees = degrees
+            )
+
+        /*
+         * После поворота пробуем сразу снова
+         * защёлкнуть элемент на ближайший узел.
+         */
+
+        val snappedAssembly =
+            rotatedAssembly.snapElementIfNeeded(
+                elementId = element.id
+            )
+
+        onAssemblyChange(
+            snappedAssembly
+        )
+    }
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -39,101 +77,69 @@ fun AssemblyToolbar(
             Arrangement.spacedBy(8.dp)
     ) {
 
-        // ----------------------------------------------------
+        // ====================================================
         // ПОВОРОТ ВЛЕВО 15°
-        // ----------------------------------------------------
+        // ====================================================
 
         OutlinedButton(
             enabled = selected != null,
             onClick = {
-
-                val element =
-                    assembly.selectedElement
-                        ?: return@OutlinedButton
-
-                onAssemblyChange(
-                    assembly.rotateElement(
-                        elementId = element.id,
-                        degrees = -15f
-                    )
+                rotateSelected(
+                    degrees = -15f
                 )
             }
         ) {
             Text("↶ 15°")
         }
 
-        // ----------------------------------------------------
+        // ====================================================
         // ПОВОРОТ ВПРАВО 15°
-        // ----------------------------------------------------
+        // ====================================================
 
         OutlinedButton(
             enabled = selected != null,
             onClick = {
-
-                val element =
-                    assembly.selectedElement
-                        ?: return@OutlinedButton
-
-                onAssemblyChange(
-                    assembly.rotateElement(
-                        elementId = element.id,
-                        degrees = 15f
-                    )
+                rotateSelected(
+                    degrees = 15f
                 )
             }
         ) {
             Text("↷ 15°")
         }
 
-        // ----------------------------------------------------
+        // ====================================================
         // ПОВОРОТ ВЛЕВО 90°
-        // ----------------------------------------------------
+        // ====================================================
 
         OutlinedButton(
             enabled = selected != null,
             onClick = {
-
-                val element =
-                    assembly.selectedElement
-                        ?: return@OutlinedButton
-
-                onAssemblyChange(
-                    assembly.rotateElement(
-                        elementId = element.id,
-                        degrees = -90f
-                    )
+                rotateSelected(
+                    degrees = -90f
                 )
             }
         ) {
             Text("↶ 90°")
         }
 
-        // ----------------------------------------------------
+        // ====================================================
         // ПОВОРОТ ВПРАВО 90°
-        // ----------------------------------------------------
+        // ====================================================
 
         OutlinedButton(
             enabled = selected != null,
             onClick = {
-
-                val element =
-                    assembly.selectedElement
-                        ?: return@OutlinedButton
-
-                onAssemblyChange(
-                    assembly.rotateElement(
-                        elementId = element.id,
-                        degrees = 90f
-                    )
+                rotateSelected(
+                    degrees = 90f
                 )
             }
         ) {
             Text("↷ 90°")
         }
 
-        // ----------------------------------------------------
-        // УДАЛИТЬ ВЫБРАННЫЙ
-        // ----------------------------------------------------
+        // ====================================================
+        // УДАЛИТЬ ВЫБРАННЫЙ ЭЛЕМЕНТ
+        // ====================================================
 
         Button(
             enabled = selected != null,
@@ -160,9 +166,9 @@ fun AssemblyToolbar(
             Text("Удалить")
         }
 
-        // ----------------------------------------------------
+        // ====================================================
         // ОЧИСТИТЬ ВСЮ СБОРКУ
-        // ----------------------------------------------------
+        // ====================================================
 
         OutlinedButton(
             enabled =
