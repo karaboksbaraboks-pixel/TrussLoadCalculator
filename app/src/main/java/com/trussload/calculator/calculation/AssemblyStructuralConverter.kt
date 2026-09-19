@@ -14,9 +14,63 @@ import kotlin.math.hypot
 
 // ============================================================
 // КОНВЕРТЕР ВИЗУАЛЬНОЙ СБОРКИ В РАСЧЁТНУЮ МОДЕЛЬ
+//
+// Визуальная сборка:
+//     координаты в пикселях
+//
+// Расчётная модель:
+//     координаты в метрах
+//
+// Соединённые AssemblyNode объединяются в один
+// физический StructuralNode.
+//
+// ВАЖНО:
+// конвертер не изменяет исходный TrussAssembly.
 // ============================================================
 
 object AssemblyStructuralConverter {
+
+    // ========================================================
+    // БАЗОВЫЕ МЕХАНИЧЕСКИЕ ПАРАМЕТРЫ
+    // ========================================================
+
+    /*
+     * Модуль упругости алюминия.
+     *
+     * 69 ГПа =
+     * 69 000 000 кН/м²
+     */
+
+    private const val DEFAULT_ALUMINUM_ELASTIC_MODULUS_KN_PER_M2 =
+        69_000_000.0
+
+    /*
+     * Плотность алюминия.
+     *
+     * Используется для оценки эквивалентной площади
+     * сечения по массе секции.
+     */
+
+    private const val DEFAULT_ALUMINUM_DENSITY_KG_PER_M3 =
+        2700.0
+
+    /*
+     * Если масса элемента пока не заполнена,
+     * используем временную эквивалентную площадь.
+     *
+     * Это необходимо только для того, чтобы
+     * StructuralModel оставалась расчётоспособной.
+     *
+     * Позже эта величина должна поступать
+     * из каталога конкретной фермы.
+     */
+
+    private const val DEFAULT_EQUIVALENT_AREA_M2 =
+        0.0005
+
+    // ========================================================
+    // ОСНОВНОЙ МЕТОД
+    // ========================================================
 
     fun convert(
         assembly: TrussAssembly
@@ -61,7 +115,8 @@ object AssemblyStructuralConverter {
         return StructuralModel(
             name = assembly.name,
             nodes = structuralNodes,
-            members = structuralMembers
+            members = structuralMembers,
+            loads = emptyList()
         )
     }
 
@@ -113,8 +168,7 @@ object AssemblyStructuralConverter {
 
     private fun buildConnectedNodeGroups(
         assembly: TrussAssembly,
-        nodeReferences:
-            List<AssemblyNodeReference>
+        nodeReferences: List<AssemblyNodeReference>
     ): List<List<AssemblyNodeReference>> {
 
         val keys =
@@ -171,12 +225,11 @@ object AssemblyStructuralConverter {
     }
 
     // ========================================================
-    // СОЗДАНИЕ STRUCTURAL NODE
+    // STRUCTURAL NODES
     // ========================================================
 
     private fun createStructuralNodes(
-        groups:
-            List<List<AssemblyNodeReference>>
+        groups: List<List<AssemblyNodeReference>>
     ): List<StructuralNode> {
 
         return groups.map { group ->
@@ -227,18 +280,12 @@ object AssemblyStructuralConverter {
     // ========================================================
 
     private fun createStructuralNodeReferenceMap(
-        groups:
-            List<List<AssemblyNodeReference>>,
-
-        structuralNodes:
-            List<StructuralNode>
+        groups: List<List<AssemblyNodeReference>>,
+        structuralNodes: List<StructuralNode>
     ): Map<NodeKey, StructuralNode> {
 
         val result =
-            mutableMapOf<
-                NodeKey,
-                StructuralNode
-            >()
+            mutableMapOf<NodeKey, StructuralNode>()
 
         groups.forEachIndexed {
                 index,
@@ -262,12 +309,11 @@ object AssemblyStructuralConverter {
     }
 
     // ========================================================
-    // СОЗДАНИЕ STRUCTURAL MEMBERS
+    // STRUCTURAL MEMBERS
     // ========================================================
 
     private fun createStructuralMembers(
         assembly: TrussAssembly,
-
         structuralNodeByReference:
             Map<NodeKey, StructuralNode>
     ): List<StructuralMember> {
@@ -283,10 +329,8 @@ object AssemblyStructuralConverter {
 
                     addStraightMember(
                         element = element,
-
                         structuralNodeByReference =
                             structuralNodeByReference,
-
                         result = result
                     )
                 }
@@ -299,10 +343,8 @@ object AssemblyStructuralConverter {
 
                     addConnectorMembers(
                         element = element,
-
                         structuralNodeByReference =
                             structuralNodeByReference,
-
                         result = result
                     )
                 }
@@ -318,42 +360,37 @@ object AssemblyStructuralConverter {
 
     private fun addStraightMember(
         element: AssemblyElement,
-
         structuralNodeByReference:
             Map<NodeKey, StructuralNode>,
-
-        result:
-            MutableList<StructuralMember>
+        result: MutableList<StructuralMember>
     ) {
 
         val start =
             structuralNodeByReference[
                 NodeKey(
-                    elementId =
-                        element.id,
-
-                    nodeIndex =
-                        0
+                    elementId = element.id,
+                    nodeIndex = 0
                 )
-            ] ?: return
+            ]
+                ?: return
 
         val end =
             structuralNodeByReference[
                 NodeKey(
-                    elementId =
-                        element.id,
-
-                    nodeIndex =
-                        1
+                    elementId = element.id,
+                    nodeIndex = 1
                 )
-            ] ?: return
+            ]
+                ?: return
 
-        if (
-            start.id ==
-            end.id
-        ) {
+        if (start.id == end.id) {
             return
         }
+
+        val area =
+            calculateEquivalentArea(
+                element = element
+            )
 
         result +=
             StructuralMember(
@@ -367,26 +404,14 @@ object AssemblyStructuralConverter {
                 sourceElementId =
                     element.id,
 
-                // ============================================
-                // РАСЧЁТНЫЕ ХАРАКТЕРИСТИКИ
-                // ============================================
-
                 area =
-                    element.areaM2,
+                    area,
 
                 elasticModulus =
-                    element.elasticModulusKnPerM2,
-
-                // ============================================
-                // МАССА
-                // ============================================
+                    DEFAULT_ALUMINUM_ELASTIC_MODULUS_KN_PER_M2,
 
                 massKg =
                     element.weight,
-
-                // ============================================
-                // ДОПУСТИМЫЕ НАГРУЗКИ
-                // ============================================
 
                 maxDistributedLoadKnPerM =
                     element.maxDistributedLoad
@@ -404,12 +429,9 @@ object AssemblyStructuralConverter {
 
     private fun addConnectorMembers(
         element: AssemblyElement,
-
         structuralNodeByReference:
             Map<NodeKey, StructuralNode>,
-
-        result:
-            MutableList<StructuralMember>
+        result: MutableList<StructuralMember>
     ) {
 
         val visualNodes =
@@ -419,9 +441,7 @@ object AssemblyStructuralConverter {
                         .PIXELS_PER_METER
             )
 
-        if (
-            visualNodes.isEmpty()
-        ) {
+        if (visualNodes.isEmpty()) {
             return
         }
 
@@ -443,23 +463,23 @@ object AssemblyStructuralConverter {
                     it.id
                 }
 
-        if (
-            nodes.size < 2
-        ) {
+        if (nodes.size < 2) {
             return
         }
 
         val first =
             nodes.first()
 
+        val area =
+            calculateEquivalentArea(
+                element = element
+            )
+
         nodes
             .drop(1)
             .forEach { node ->
 
-                if (
-                    first.id !=
-                    node.id
-                ) {
+                if (first.id != node.id) {
 
                     result +=
                         StructuralMember(
@@ -473,26 +493,14 @@ object AssemblyStructuralConverter {
                             sourceElementId =
                                 element.id,
 
-                            // =================================
-                            // РАСЧЁТНЫЕ ХАРАКТЕРИСТИКИ
-                            // =================================
-
                             area =
-                                element.areaM2,
+                                area,
 
                             elasticModulus =
-                                element.elasticModulusKnPerM2,
-
-                            // =================================
-                            // МАССА
-                            // =================================
+                                DEFAULT_ALUMINUM_ELASTIC_MODULUS_KN_PER_M2,
 
                             massKg =
                                 0.0,
-
-                            // =================================
-                            // ДОПУСТИМЫЕ НАГРУЗКИ
-                            // =================================
 
                             maxDistributedLoadKnPerM =
                                 element
@@ -506,6 +514,48 @@ object AssemblyStructuralConverter {
                         )
                 }
             }
+    }
+
+    // ========================================================
+    // ЭКВИВАЛЕНТНАЯ ПЛОЩАДЬ СЕЧЕНИЯ
+    // ========================================================
+
+    private fun calculateEquivalentArea(
+        element: AssemblyElement
+    ): Double {
+
+        /*
+         * Если известны:
+         *
+         * m = масса секции, кг
+         * L = длина секции, м
+         * rho = плотность, кг/м³
+         *
+         * A = m / (rho * L)
+         */
+
+        if (
+            element.weight > 0.0 &&
+            element.length > 0.0
+        ) {
+
+            val area =
+                element.weight /
+                    (
+                        DEFAULT_ALUMINUM_DENSITY_KG_PER_M3 *
+                            element.length
+                    )
+
+            if (
+                area.isFinite() &&
+                area > 0.0
+            ) {
+
+                return area
+            }
+        }
+
+        return DEFAULT_EQUIVALENT_AREA_M2
     }
 
     // ========================================================
@@ -583,10 +633,7 @@ private class NodeUnionFind(
             parent[key]
                 ?: return key
 
-        if (
-            current ==
-            key
-        ) {
+        if (current == key) {
             return key
         }
 
@@ -616,10 +663,7 @@ private class NodeUnionFind(
                 second
             )
 
-        if (
-            firstRoot !=
-            secondRoot
-        ) {
+        if (firstRoot != secondRoot) {
 
             parent[
                 secondRoot
@@ -639,17 +683,13 @@ fun StructuralModel.validateGeometry():
     val errors =
         mutableListOf<String>()
 
-    if (
-        nodes.isEmpty()
-    ) {
+    if (nodes.isEmpty()) {
 
         errors +=
             "В расчётной схеме отсутствуют узлы."
     }
 
-    if (
-        members.isEmpty()
-    ) {
+    if (members.isEmpty()) {
 
         errors +=
             "В расчётной схеме отсутствуют элементы."
@@ -667,9 +707,7 @@ fun StructuralModel.validateGeometry():
                 member.endNodeId
             )
 
-        if (
-            start == null
-        ) {
+        if (start == null) {
 
             errors +=
                 "Не найден начальный узел элемента ${member.id}."
@@ -677,9 +715,7 @@ fun StructuralModel.validateGeometry():
             return@forEach
         }
 
-        if (
-            end == null
-        ) {
+        if (end == null) {
 
             errors +=
                 "Не найден конечный узел элемента ${member.id}."
@@ -689,11 +725,8 @@ fun StructuralModel.validateGeometry():
 
         val length =
             hypot(
-                end.x -
-                    start.x,
-
-                end.y -
-                    start.y
+                end.x - start.x,
+                end.y - start.y
             )
 
         if (
@@ -732,19 +765,14 @@ fun StructuralModel.findNearlyCoincidentNodes(
 
         for (
             secondIndex in
-            firstIndex + 1 until
-                nodes.size
+            firstIndex + 1 until nodes.size
         ) {
 
             val first =
-                nodes[
-                    firstIndex
-                ]
+                nodes[firstIndex]
 
             val second =
-                nodes[
-                    secondIndex
-                ]
+                nodes[secondIndex]
 
             val dx =
                 first.x -
@@ -755,10 +783,8 @@ fun StructuralModel.findNearlyCoincidentNodes(
                     second.y
 
             if (
-                abs(dx) <=
-                    toleranceMeters &&
-                abs(dy) <=
-                    toleranceMeters
+                abs(dx) <= toleranceMeters &&
+                abs(dy) <= toleranceMeters
             ) {
 
                 val distance =
@@ -768,8 +794,7 @@ fun StructuralModel.findNearlyCoincidentNodes(
                     )
 
                 if (
-                    distance <=
-                    toleranceMeters
+                    distance <= toleranceMeters
                 ) {
 
                     result +=
