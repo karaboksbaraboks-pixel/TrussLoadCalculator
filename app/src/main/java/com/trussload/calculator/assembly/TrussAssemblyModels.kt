@@ -23,7 +23,8 @@ enum class AssemblyElementType {
 
 data class AssemblyElement(
 
-    val id: String = UUID.randomUUID().toString(),
+    val id: String =
+        UUID.randomUUID().toString(),
 
     val type: AssemblyElementType,
 
@@ -33,32 +34,28 @@ data class AssemblyElement(
     // ГЕОМЕТРИЯ
     // --------------------------------------------------------
 
-    // Длина элемента, м
     val length: Double = 0.0,
 
-    // Габариты фермы, м
     val width: Double = 0.29,
+
     val height: Double = 0.29,
 
     // --------------------------------------------------------
     // МАССА
     // --------------------------------------------------------
 
-    // Масса элемента, кг
     val weight: Double = 0.0,
 
     // --------------------------------------------------------
     // ПОЛОЖЕНИЕ НА РАБОЧЕМ ПОЛЕ
     // --------------------------------------------------------
 
-    // Центр элемента, px
     val x: Float = 0f,
+
     val y: Float = 0f,
 
-    // Поворот, градусы
     val rotation: Float = 0f,
 
-    // Выбран ли элемент
     val selected: Boolean = false,
 
     // --------------------------------------------------------
@@ -66,26 +63,24 @@ data class AssemblyElement(
     // --------------------------------------------------------
 
     val manufacturer: String = "",
+
     val series: String = "",
+
     val article: String = "",
 
     // --------------------------------------------------------
     // ДОПУСТИМЫЕ НАГРУЗКИ
     // --------------------------------------------------------
 
-    // Максимальная распределённая нагрузка, кН/м
     val maxDistributedLoad: Double? = null,
 
-    // Максимальная точечная нагрузка, кН
     val maxPointLoad: Double? = null,
 
     // --------------------------------------------------------
     // РАСЧЁТНЫЕ ХАРАКТЕРИСТИКИ
     //
-    // Эти значения передаются в StructuralMember.
-    //
     // areaM2:
-    // площадь расчётного сечения, м²
+    // эквивалентная площадь сечения, м²
     //
     // elasticModulusKnPerM2:
     // модуль упругости, кН/м²
@@ -96,25 +91,15 @@ data class AssemblyElement(
     val elasticModulusKnPerM2: Double? = null
 ) {
 
-    // --------------------------------------------------------
-    // ПРЯМОЙ ЭЛЕМЕНТ
-    // --------------------------------------------------------
-
     val isStraight: Boolean
         get() =
-            type == AssemblyElementType.STRAIGHT
-
-    // --------------------------------------------------------
-    // СОЕДИНИТЕЛЬ
-    // --------------------------------------------------------
+            type ==
+                AssemblyElementType.STRAIGHT
 
     val isConnector: Boolean
         get() =
-            type != AssemblyElementType.STRAIGHT
-
-    // --------------------------------------------------------
-    // НОРМАЛИЗОВАННЫЙ УГОЛ
-    // --------------------------------------------------------
+            type !=
+                AssemblyElementType.STRAIGHT
 
     val rotationNormalized: Float
         get() {
@@ -128,27 +113,6 @@ data class AssemblyElement(
 
             return value
         }
-
-    // --------------------------------------------------------
-    // ЕСТЬ ЛИ ДАННЫЕ ДЛЯ РАСЧЁТА ЖЁСТКОСТИ
-    // --------------------------------------------------------
-
-    val hasStructuralProperties: Boolean
-        get() {
-
-            val area =
-                areaM2
-
-            val elasticModulus =
-                elasticModulusKnPerM2
-
-            return area != null &&
-                area.isFinite() &&
-                area > 0.0 &&
-                elasticModulus != null &&
-                elasticModulus.isFinite() &&
-                elasticModulus > 0.0
-        }
 }
 
 // ============================================================
@@ -157,12 +121,15 @@ data class AssemblyElement(
 
 data class AssemblyConnection(
 
-    val id: String = UUID.randomUUID().toString(),
+    val id: String =
+        UUID.randomUUID().toString(),
 
     val firstElementId: String,
+
     val firstNodeIndex: Int,
 
     val secondElementId: String,
+
     val secondNodeIndex: Int
 )
 
@@ -172,18 +139,24 @@ data class AssemblyConnection(
 
 data class TrussAssembly(
 
-    val id: String = UUID.randomUUID().toString(),
+    val id: String =
+        UUID.randomUUID().toString(),
 
-    val name: String = "Новая сборка",
+    val name: String =
+        "Новая сборка",
 
-    val elements: List<AssemblyElement> = emptyList(),
+    val elements:
+        List<AssemblyElement> =
+        emptyList(),
 
-    val connections: List<AssemblyConnection> = emptyList(),
+    val connections:
+        List<AssemblyConnection> =
+        emptyList(),
 
-    // Масштаб рабочего поля
     val zoom: Float = 1f,
 
     val panX: Float = 0f,
+
     val panY: Float = 0f
 ) {
 
@@ -250,7 +223,9 @@ data class TrussAssembly(
 // ============================================================
 
 data class AssemblyPoint(
+
     val x: Float,
+
     val y: Float
 )
 
@@ -301,14 +276,20 @@ fun AssemblyElement.getStraightEndpoints(
 
     val first =
         AssemblyPoint(
-            x = x - halfDx,
-            y = y - halfDy
+            x =
+                x - halfDx,
+
+            y =
+                y - halfDy
         )
 
     val second =
         AssemblyPoint(
-            x = x + halfDx,
-            y = y + halfDy
+            x =
+                x + halfDx,
+
+            y =
+                y + halfDy
         )
 
     return first to second
@@ -323,7 +304,6 @@ fun TrussAssembly.selectElement(
 ): TrussAssembly {
 
     return copy(
-
         elements =
             elements.map { element ->
 
@@ -344,7 +324,6 @@ fun TrussAssembly.clearSelection():
     TrussAssembly {
 
     return copy(
-
         elements =
             elements.map { element ->
 
@@ -366,7 +345,6 @@ fun TrussAssembly.moveElement(
 ): TrussAssembly {
 
     return copy(
-
         elements =
             elements.map { element ->
 
@@ -404,7 +382,6 @@ fun TrussAssembly.setElementPosition(
 ): TrussAssembly {
 
     return copy(
-
         elements =
             elements.map { element ->
 
@@ -436,7 +413,6 @@ fun TrussAssembly.rotateElement(
 ): TrussAssembly {
 
     return copy(
-
         elements =
             elements.map { element ->
 
@@ -453,8 +429,7 @@ fun TrussAssembly.rotateElement(
                         360f
 
                     if (
-                        newRotation <
-                        0f
+                        newRotation < 0f
                     ) {
 
                         newRotation +=
@@ -486,7 +461,8 @@ fun TrussAssembly.deleteElement(
 
         elements =
             elements.filterNot {
-                it.id == elementId
+                it.id ==
+                    elementId
             },
 
         connections =
@@ -508,7 +484,8 @@ fun TrussAssembly.deleteSelectedElement():
     TrussAssembly {
 
     val selectedId =
-        selectedElement?.id
+        selectedElement
+            ?.id
             ?: return this
 
     return deleteElement(
@@ -530,28 +507,6 @@ fun TrussAssembly.clearAssembly():
 
         connections =
             emptyList()
-    )
-}
-
-// ============================================================
-// ОТСОЕДИНЕНИЕ ЭЛЕМЕНТА ОТ ВСЕХ СТЫКОВ
-// ============================================================
-
-fun TrussAssembly.disconnectElement(
-    elementId: String
-): TrussAssembly {
-
-    return copy(
-
-        connections =
-            connections.filterNot {
-                    connection ->
-
-                connection.firstElementId ==
-                    elementId ||
-                    connection.secondElementId ==
-                    elementId
-            }
     )
 }
 
@@ -663,4 +618,24 @@ object StandardTrussElements {
                     "Куб"
             )
         )
+}
+
+// ============================================================
+// ОТСОЕДИНЕНИЕ ЭЛЕМЕНТА ОТ ВСЕХ СТЫКОВ
+// ============================================================
+
+fun TrussAssembly.disconnectElement(
+    elementId: String
+): TrussAssembly {
+
+    return copy(
+        connections =
+            connections.filterNot { connection ->
+
+                connection.firstElementId ==
+                    elementId ||
+                    connection.secondElementId ==
+                    elementId
+            }
+    )
 }
