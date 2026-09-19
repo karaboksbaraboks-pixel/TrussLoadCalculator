@@ -123,13 +123,7 @@ object AssemblyStructuralConverter {
     // --------------------------------------------------------
     // ОБЪЕДИНЕНИЕ СОЕДИНЁННЫХ УЗЛОВ
     //
-    // Используется простой Union-Find.
-    //
-    // Если:
-    // A:1 соединён с B:0,
-    // а B:0 соединён с C:1,
-    //
-    // все три точки становятся одним физическим узлом.
+    // Используется Union-Find.
     // --------------------------------------------------------
 
     private fun buildConnectedNodeGroups(
@@ -201,14 +195,6 @@ object AssemblyStructuralConverter {
     ): List<StructuralNode> {
 
         return groups.map { group ->
-
-            /*
-             * После snap координаты соединённых точек
-             * должны совпадать.
-             *
-             * Но среднее значение делает конвертер
-             * устойчивее к небольшим погрешностям Float.
-             */
 
             val averageX =
                 group
@@ -307,10 +293,6 @@ object AssemblyStructuralConverter {
 
             when (element.type) {
 
-                // --------------------------------------------
-                // ПРЯМАЯ ФЕРМА
-                // --------------------------------------------
-
                 AssemblyElementType.STRAIGHT -> {
 
                     addStraightMember(
@@ -322,15 +304,6 @@ object AssemblyStructuralConverter {
                         result = result
                     )
                 }
-
-                // --------------------------------------------
-                // СОЕДИНИТЕЛИ
-                //
-                // Каждый луч соединителя становится
-                // отдельным расчётным элементом:
-                //
-                // внешний узел -> центр блока
-                // --------------------------------------------
 
                 AssemblyElementType.CORNER_90,
                 AssemblyElementType.CORNER_135,
@@ -402,10 +375,12 @@ object AssemblyStructuralConverter {
                     element.weight,
 
                 maxDistributedLoadKnPerM =
-                    element.maxDistributedLoad,
+                    element.maxDistributedLoad
+                        ?: 0.0,
 
                 maxPointLoadKn =
                     element.maxPointLoad
+                        ?: 0.0
             )
     }
 
@@ -435,42 +410,30 @@ object AssemblyStructuralConverter {
         }
 
         /*
-         * Для углов, T, X и куба нужен центральный
-         * расчётный узел.
+         * Для углов, T, X и куба сейчас используем
+         * существующие внешние расчётные узлы.
          *
-         * Он не является внешним snap-узлом,
-         * поэтому создаётся отдельно.
-         *
-         * Однако StructuralModel сейчас формируется
-         * из общего списка узлов раньше элементов.
-         *
-         * Поэтому на текущем этапе НЕ создаём
-         * искусственные центральные стержни.
-         *
-         * Вместо этого соединяем внешние узлы
-         * блока между собой.
-         *
-         * Для 2 узлов: один элемент.
-         * Для T: два элемента от первого узла.
-         * Для X/CUBE: также создаём связную группу.
+         * Отдельный центральный StructuralNode
+         * на данном этапе не создаётся.
          */
 
         val nodes =
-            visualNodes.mapNotNull { visualNode ->
+            visualNodes
+                .mapNotNull { visualNode ->
 
-                structuralNodeByReference[
-                    NodeKey(
-                        elementId =
-                            element.id,
+                    structuralNodeByReference[
+                        NodeKey(
+                            elementId =
+                                element.id,
 
-                        nodeIndex =
-                            visualNode.nodeIndex
-                    )
-                ]
-            }
-            .distinctBy {
-                it.id
-            }
+                            nodeIndex =
+                                visualNode.nodeIndex
+                        )
+                    ]
+                }
+                .distinctBy {
+                    it.id
+                }
 
         if (nodes.size < 2) {
             return
@@ -496,15 +459,18 @@ object AssemblyStructuralConverter {
                             sourceElementId =
                                 element.id,
 
-                            massKg = 0.0,
+                            massKg =
+                                0.0,
 
                             maxDistributedLoadKnPerM =
                                 element
-                                    .maxDistributedLoad,
+                                    .maxDistributedLoad
+                                    ?: 0.0,
 
                             maxPointLoadKn =
                                 element
                                     .maxPointLoad
+                                    ?: 0.0
                         )
                 }
             }
@@ -512,10 +478,6 @@ object AssemblyStructuralConverter {
 
     // --------------------------------------------------------
     // PIXELS -> METERS
-    //
-    // Относительные координаты сохраняются.
-    // Абсолютное положение конструкции на Canvas
-    // для статического расчёта значения не имеет.
     // --------------------------------------------------------
 
     private fun pixelsToMeters(
@@ -553,8 +515,6 @@ private data class NodeKey(
 
 // ============================================================
 // UNION-FIND
-//
-// Нужен для объединения цепочек соединений.
 // ============================================================
 
 private class NodeUnionFind(
@@ -699,12 +659,6 @@ fun StructuralModel.validateGeometry():
 
 // ============================================================
 // ПРОВЕРКА СОВПАДАЮЩИХ НЕСОЕДИНЁННЫХ УЗЛОВ
-//
-// Это диагностическая функция.
-//
-// Если две точки визуально лежат почти в одном месте,
-// но AssemblyConnection между ними не создан,
-// расчёт не должен молча считать их одним узлом.
 // ============================================================
 
 fun StructuralModel.findNearlyCoincidentNodes(
