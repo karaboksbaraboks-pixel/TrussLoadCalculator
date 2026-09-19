@@ -1,6 +1,5 @@
 package com.trussload.calculator.assembly
 
-import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.sin
@@ -11,20 +10,21 @@ import kotlin.math.sin
 
 object AssemblyGeometryConfig {
 
-    // Масштаб прямых секций
     const val PIXELS_PER_METER = 120f
 
-    // Радиус точки соединения
     const val NODE_RADIUS = 8f
 
-    // Допуск выбора прямой секции пальцем
-    const val SELECTION_DISTANCE = 38f
+    // Увеличенная зона выбора пальцем
+    const val SELECTION_DISTANCE = 42f
 
-    // Расстояние автоматического прилипания
-    const val SNAP_DISTANCE = 40f
+    // Расстояние автоматического соединения
+    const val SNAP_DISTANCE = 32f
 
-    // Длина плеча соединителя
-    const val CONNECTOR_SIZE = 54f
+    // Длина плеч соединителей
+    const val CONNECTOR_SIZE = 42f
+
+    // Размер графического куба
+    const val CUBE_SIZE = 64f
 }
 
 // ============================================================
@@ -66,9 +66,7 @@ private fun rotateLocalPoint(
 ): AssemblyPoint {
 
     val radians =
-        Math.toRadians(
-            rotationDegrees.toDouble()
-        )
+        Math.toRadians(rotationDegrees.toDouble())
 
     val cosValue =
         cos(radians).toFloat()
@@ -88,20 +86,20 @@ private fun rotateLocalPoint(
 }
 
 // ============================================================
-// ПРЕОБРАЗОВАНИЕ ЛОКАЛЬНЫХ УЗЛОВ В ГЛОБАЛЬНЫЕ
+// ПРЕОБРАЗОВАНИЕ ЛОКАЛЬНЫХ ТОЧЕК В УЗЛЫ
 // ============================================================
 
-private fun buildNodes(
+private fun createNodes(
     element: AssemblyElement,
     localPoints: List<AssemblyPoint>
 ): List<AssemblyNode> {
 
-    return localPoints.mapIndexed { index, point ->
+    return localPoints.mapIndexed { index, localPoint ->
 
         val rotated =
             rotateLocalPoint(
-                localX = point.x,
-                localY = point.y,
+                localX = localPoint.x,
+                localY = localPoint.y,
                 rotationDegrees = element.rotation
             )
 
@@ -115,7 +113,7 @@ private fun buildNodes(
 }
 
 // ============================================================
-// ПРЯМАЯ СЕКЦИЯ
+// УЗЛЫ ПРЯМОЙ ФЕРМЫ
 // ============================================================
 
 private fun straightNodes(
@@ -129,7 +127,6 @@ private fun straightNodes(
         )
 
     return listOf(
-
         AssemblyNode(
             elementId = element.id,
             nodeIndex = 0,
@@ -149,8 +146,7 @@ private fun straightNodes(
 // ============================================================
 // УГОЛ 90°
 //
-// Узел 0 — левое плечо
-// Узел 1 — верхнее плечо
+// Два плеча образуют настоящий угол 90°.
 // ============================================================
 
 private fun corner90Nodes(
@@ -160,26 +156,25 @@ private fun corner90Nodes(
     val arm =
         AssemblyGeometryConfig.CONNECTOR_SIZE
 
-    return buildNodes(
+    return createNodes(
         element = element,
-        localPoints =
-            listOf(
-                AssemblyPoint(
-                    x = -arm,
-                    y = 0f
-                ),
-                AssemblyPoint(
-                    x = 0f,
-                    y = -arm
-                )
+        localPoints = listOf(
+            AssemblyPoint(
+                x = -arm,
+                y = 0f
+            ),
+            AssemblyPoint(
+                x = 0f,
+                y = -arm
             )
+        )
     )
 }
 
 // ============================================================
 // УГОЛ 135°
 //
-// Между двумя плечами 135°.
+// Между первым и вторым плечом 135°.
 // ============================================================
 
 private fun corner135Nodes(
@@ -189,41 +184,31 @@ private fun corner135Nodes(
     val arm =
         AssemblyGeometryConfig.CONNECTOR_SIZE
 
-    val angle45 =
-        Math.toRadians(45.0)
+    val diagonal =
+        (
+            arm /
+                kotlin.math.sqrt(2f)
+        )
 
-    val diagonalX =
-        (cos(angle45) * arm)
-            .toFloat()
-
-    val diagonalY =
-        (sin(angle45) * arm)
-            .toFloat()
-
-    return buildNodes(
+    return createNodes(
         element = element,
-        localPoints =
-            listOf(
-                AssemblyPoint(
-                    x = -arm,
-                    y = 0f
-                ),
-                AssemblyPoint(
-                    x = diagonalX,
-                    y = -diagonalY
-                )
+        localPoints = listOf(
+            AssemblyPoint(
+                x = -arm,
+                y = 0f
+            ),
+            AssemblyPoint(
+                x = diagonal,
+                y = -diagonal
             )
+        )
     )
 }
 
 // ============================================================
 // T-СОЕДИНИТЕЛЬ
 //
-//          2
-//          |
-//     0 ---+--- 1
-//
-// Три реальных точки соединения.
+// Три точки подключения.
 // ============================================================
 
 private fun tJunctionNodes(
@@ -233,41 +218,29 @@ private fun tJunctionNodes(
     val arm =
         AssemblyGeometryConfig.CONNECTOR_SIZE
 
-    return buildNodes(
+    return createNodes(
         element = element,
-        localPoints =
-            listOf(
-                // Левая
-                AssemblyPoint(
-                    x = -arm,
-                    y = 0f
-                ),
-
-                // Правая
-                AssemblyPoint(
-                    x = arm,
-                    y = 0f
-                ),
-
-                // Верхняя
-                AssemblyPoint(
-                    x = 0f,
-                    y = -arm
-                )
+        localPoints = listOf(
+            AssemblyPoint(
+                x = -arm,
+                y = 0f
+            ),
+            AssemblyPoint(
+                x = arm,
+                y = 0f
+            ),
+            AssemblyPoint(
+                x = 0f,
+                y = -arm
             )
+        )
     )
 }
 
 // ============================================================
 // X-СОЕДИНИТЕЛЬ
 //
-//          2
-//          |
-//     0 ---+--- 1
-//          |
-//          3
-//
-// Четыре реальных точки соединения.
+// Четыре точки подключения.
 // ============================================================
 
 private fun xJunctionNodes(
@@ -277,34 +250,70 @@ private fun xJunctionNodes(
     val arm =
         AssemblyGeometryConfig.CONNECTOR_SIZE
 
-    return buildNodes(
+    return createNodes(
         element = element,
-        localPoints =
-            listOf(
-                // Левая
-                AssemblyPoint(
-                    x = -arm,
-                    y = 0f
-                ),
-
-                // Правая
-                AssemblyPoint(
-                    x = arm,
-                    y = 0f
-                ),
-
-                // Верхняя
-                AssemblyPoint(
-                    x = 0f,
-                    y = -arm
-                ),
-
-                // Нижняя
-                AssemblyPoint(
-                    x = 0f,
-                    y = arm
-                )
+        localPoints = listOf(
+            AssemblyPoint(
+                x = -arm,
+                y = 0f
+            ),
+            AssemblyPoint(
+                x = arm,
+                y = 0f
+            ),
+            AssemblyPoint(
+                x = 0f,
+                y = -arm
+            ),
+            AssemblyPoint(
+                x = 0f,
+                y = arm
             )
+        )
+    )
+}
+
+// ============================================================
+// КУБ
+//
+// В 2D-конструкторе куб представлен как центральный
+// соединительный блок с четырьмя рабочими направлениями.
+//
+// 0 = слева
+// 1 = справа
+// 2 = сверху
+// 3 = снизу
+//
+// Позже эту модель можно расширить для 3D.
+// ============================================================
+
+private fun cubeNodes(
+    element: AssemblyElement
+): List<AssemblyNode> {
+
+    val halfSize =
+        AssemblyGeometryConfig.CUBE_SIZE / 2f
+
+    return createNodes(
+        element = element,
+        localPoints = listOf(
+            AssemblyPoint(
+                x = -halfSize,
+                y = 0f
+            ),
+            AssemblyPoint(
+                x = halfSize,
+                y = 0f
+            ),
+            AssemblyPoint(
+                x = 0f,
+                y = -halfSize
+            ),
+            AssemblyPoint(
+                x = 0f,
+                y = halfSize
+            )
+        )
     )
 }
 
@@ -326,24 +335,19 @@ fun AssemblyElement.getNodes(
             )
 
         AssemblyElementType.CORNER_90 ->
-            corner90Nodes(
-                element = this
-            )
+            corner90Nodes(this)
 
         AssemblyElementType.CORNER_135 ->
-            corner135Nodes(
-                element = this
-            )
+            corner135Nodes(this)
 
         AssemblyElementType.T_JUNCTION ->
-            tJunctionNodes(
-                element = this
-            )
+            tJunctionNodes(this)
 
         AssemblyElementType.X_JUNCTION ->
-            xJunctionNodes(
-                element = this
-            )
+            xJunctionNodes(this)
+
+        AssemblyElementType.CUBE ->
+            cubeNodes(this)
     }
 }
 
@@ -385,11 +389,11 @@ private fun distancePointToSegment(
     val segmentY =
         endY - startY
 
-    val segmentLengthSquared =
+    val lengthSquared =
         segmentX * segmentX +
             segmentY * segmentY
 
-    if (segmentLengthSquared <= 0.0001f) {
+    if (lengthSquared <= 0.0001f) {
 
         return distanceBetween(
             firstX = pointX,
@@ -403,7 +407,7 @@ private fun distancePointToSegment(
         (
             (pointX - startX) * segmentX +
                 (pointY - startY) * segmentY
-        ) / segmentLengthSquared
+        ) / lengthSquared
 
     val clamped =
         projection.coerceIn(
@@ -428,57 +432,14 @@ private fun distancePointToSegment(
 }
 
 // ============================================================
-// РАССТОЯНИЕ ДО СОЕДИНИТЕЛЯ
-//
-// Для T/X/углов проверяем не только центр,
-// но и каждое плечо соединителя.
-// ============================================================
-
-private fun distanceToConnector(
-    element: AssemblyElement,
-    pointX: Float,
-    pointY: Float
-): Float {
-
-    val nodes =
-        element.getNodes()
-
-    if (nodes.isEmpty()) {
-        return Float.MAX_VALUE
-    }
-
-    var bestDistance =
-        distanceBetween(
-            firstX = pointX,
-            firstY = pointY,
-            secondX = element.x,
-            secondY = element.y
-        )
-
-    nodes.forEach { node ->
-
-        val distance =
-            distancePointToSegment(
-                pointX = pointX,
-                pointY = pointY,
-
-                startX = element.x,
-                startY = element.y,
-
-                endX = node.x,
-                endY = node.y
-            )
-
-        if (distance < bestDistance) {
-            bestDistance = distance
-        }
-    }
-
-    return bestDistance
-}
-
-// ============================================================
 // ПОИСК ЭЛЕМЕНТА ПОД ПАЛЬЦЕМ
+//
+// Это важная часть исправления выбора старых элементов.
+// Проверяем не selectedElement, а ВСЕ элементы.
+//
+// asReversed() означает:
+// если элементы визуально перекрываются,
+// выбирается нарисованный последним.
 // ============================================================
 
 fun TrussAssembly.findElementAt(
@@ -506,35 +467,55 @@ fun TrussAssembly.findElementAt(
                         pointX = x,
                         pointY = y,
 
-                        startX = endpoints.first.x,
-                        startY = endpoints.first.y,
+                        startX =
+                            endpoints.first.x,
 
-                        endX = endpoints.second.x,
-                        endY = endpoints.second.y
+                        startY =
+                            endpoints.first.y,
+
+                        endX =
+                            endpoints.second.x,
+
+                        endY =
+                            endpoints.second.y
                     ) <=
                         AssemblyGeometryConfig
                             .SELECTION_DISTANCE
                 }
 
-                AssemblyElementType.CORNER_90,
-                AssemblyElementType.CORNER_135,
-                AssemblyElementType.T_JUNCTION,
-                AssemblyElementType.X_JUNCTION -> {
+                AssemblyElementType.CUBE -> {
 
-                    distanceToConnector(
-                        element = element,
-                        pointX = x,
-                        pointY = y
-                    ) <=
-                        AssemblyGeometryConfig
-                            .SELECTION_DISTANCE
+                    val radius =
+                        AssemblyGeometryConfig.CUBE_SIZE *
+                            0.75f
+
+                    distanceBetween(
+                        firstX = x,
+                        firstY = y,
+                        secondX = element.x,
+                        secondY = element.y
+                    ) <= radius
+                }
+
+                else -> {
+
+                    val radius =
+                        AssemblyGeometryConfig.CONNECTOR_SIZE +
+                            AssemblyGeometryConfig.SELECTION_DISTANCE
+
+                    distanceBetween(
+                        firstX = x,
+                        firstY = y,
+                        secondX = element.x,
+                        secondY = element.y
+                    ) <= radius
                 }
             }
         }
 }
 
 // ============================================================
-// ПОИСК БЛИЖАЙШЕЙ ТОЧКИ SNAP
+// ПОИСК SNAP
 // ============================================================
 
 fun TrussAssembly.findSnapForElement(
@@ -552,82 +533,72 @@ fun TrussAssembly.findSnapForElement(
 
     val movingNodes =
         movingElement.getNodes(
-            pixelsPerMeter =
-                pixelsPerMeter
+            pixelsPerMeter = pixelsPerMeter
         )
 
-    val targetElements =
+    val otherElements =
         elements.filter {
             it.id != movingElementId
         }
 
-    var bestResult: SnapResult? =
-        null
+    var bestResult: SnapResult? = null
 
     movingNodes.forEach { movingNode ->
 
-        targetElements.forEach { targetElement ->
+        otherElements.forEach { targetElement ->
 
-            val targetNodes =
-                targetElement.getNodes(
+            targetElement
+                .getNodes(
                     pixelsPerMeter =
                         pixelsPerMeter
                 )
+                .forEach { targetNode ->
 
-            targetNodes.forEach { targetNode ->
-
-                val distance =
-                    distanceBetween(
-                        firstX =
-                            movingNode.x,
-
-                        firstY =
-                            movingNode.y,
-
-                        secondX =
-                            targetNode.x,
-
-                        secondY =
-                            targetNode.y
-                    )
-
-                val currentBest =
-                    bestResult
-
-                if (
-                    distance <= snapDistance &&
-                    (
-                        currentBest == null ||
-                            distance <
-                                currentBest.distance
-                    )
-                ) {
-
-                    bestResult =
-                        SnapResult(
-                            movingElementId =
-                                movingElement.id,
-
-                            movingNodeIndex =
-                                movingNode.nodeIndex,
-
-                            targetElementId =
-                                targetElement.id,
-
-                            targetNodeIndex =
-                                targetNode.nodeIndex,
-
-                            targetX =
-                                targetNode.x,
-
-                            targetY =
-                                targetNode.y,
-
-                            distance =
-                                distance
+                    val distance =
+                        distanceBetween(
+                            firstX = movingNode.x,
+                            firstY = movingNode.y,
+                            secondX = targetNode.x,
+                            secondY = targetNode.y
                         )
+
+                    val currentBest =
+                        bestResult
+
+                    if (
+                        distance <= snapDistance &&
+                        (
+                            currentBest == null ||
+                                distance <
+                                    currentBest.distance
+                        )
+                    ) {
+
+                        bestResult =
+                            SnapResult(
+                                movingElementId =
+                                    movingElement.id,
+
+                                movingNodeIndex =
+                                    movingNode.nodeIndex,
+
+                                targetElementId =
+                                    targetElement.id,
+
+                                targetNodeIndex =
+                                    targetNode.nodeIndex,
+
+                                targetX =
+                                    targetNode.x,
+
+                                targetY =
+                                    targetNode.y,
+
+                                distance =
+                                    distance
+                            )
+                    }
                 }
-            }
         }
     }
 
@@ -682,20 +653,18 @@ fun TrussAssembly.applySnap(
                 deltaY
         )
 
-    // Не допускаем повторной записи того же соединения.
-
-    val alreadyExists =
+    val connectionExists =
         movedAssembly.connections.any { connection ->
 
             (
                 connection.firstElementId ==
                     movingElement.id &&
                     connection.firstNodeIndex ==
-                        snapResult.movingNodeIndex &&
+                    snapResult.movingNodeIndex &&
                     connection.secondElementId ==
-                        snapResult.targetElementId &&
+                    snapResult.targetElementId &&
                     connection.secondNodeIndex ==
-                        snapResult.targetNodeIndex
+                    snapResult.targetNodeIndex
             ) ||
                 (
                     connection.secondElementId ==
@@ -709,7 +678,7 @@ fun TrussAssembly.applySnap(
                 )
         }
 
-    if (alreadyExists) {
+    if (connectionExists) {
         return movedAssembly
     }
 
@@ -747,43 +716,15 @@ fun TrussAssembly.snapElementIfNeeded(
         AssemblyGeometryConfig.PIXELS_PER_METER
 ): TrussAssembly {
 
-    val snap =
+    val snapResult =
         findSnapForElement(
-            movingElementId =
-                elementId,
-
-            snapDistance =
-                snapDistance,
-
-            pixelsPerMeter =
-                pixelsPerMeter
+            movingElementId = elementId,
+            snapDistance = snapDistance,
+            pixelsPerMeter = pixelsPerMeter
         ) ?: return this
 
     return applySnap(
-        snapResult = snap,
-        pixelsPerMeter =
-            pixelsPerMeter
+        snapResult = snapResult,
+        pixelsPerMeter = pixelsPerMeter
     )
-}
-
-// ============================================================
-// УГОЛ МЕЖДУ ТОЧКАМИ
-// ============================================================
-
-fun angleBetweenPoints(
-    firstX: Float,
-    firstY: Float,
-    secondX: Float,
-    secondY: Float
-): Float {
-
-    val radians =
-        atan2(
-            secondY - firstY,
-            secondX - firstX
-        )
-
-    return Math.toDegrees(
-        radians.toDouble()
-    ).toFloat()
 }
