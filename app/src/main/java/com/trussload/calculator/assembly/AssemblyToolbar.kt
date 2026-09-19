@@ -25,44 +25,6 @@ fun AssemblyToolbar(
     val selected =
         assembly.selectedElement
 
-    // ========================================================
-    // ОБЩАЯ ФУНКЦИЯ ПОВОРОТА
-    // ========================================================
-
-    fun rotateSelected(
-        degrees: Float
-    ) {
-
-        val element =
-            assembly.selectedElement
-                ?: return
-
-        /*
-         * rotateElement() уже удаляет старые соединения
-         * поворачиваемого элемента.
-         */
-
-        val rotatedAssembly =
-            assembly.rotateElement(
-                elementId = element.id,
-                degrees = degrees
-            )
-
-        /*
-         * После поворота пробуем сразу снова
-         * защёлкнуть элемент на ближайший узел.
-         */
-
-        val snappedAssembly =
-            rotatedAssembly.snapElementIfNeeded(
-                elementId = element.id
-            )
-
-        onAssemblyChange(
-            snappedAssembly
-        )
-    }
-
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -84,8 +46,16 @@ fun AssemblyToolbar(
         OutlinedButton(
             enabled = selected != null,
             onClick = {
-                rotateSelected(
-                    degrees = -15f
+
+                val element =
+                    assembly.selectedElement
+                        ?: return@OutlinedButton
+
+                onAssemblyChange(
+                    assembly.rotateElement(
+                        elementId = element.id,
+                        degrees = -15f
+                    )
                 )
             }
         ) {
@@ -99,8 +69,16 @@ fun AssemblyToolbar(
         OutlinedButton(
             enabled = selected != null,
             onClick = {
-                rotateSelected(
-                    degrees = 15f
+
+                val element =
+                    assembly.selectedElement
+                        ?: return@OutlinedButton
+
+                onAssemblyChange(
+                    assembly.rotateElement(
+                        elementId = element.id,
+                        degrees = 15f
+                    )
                 )
             }
         ) {
@@ -114,8 +92,16 @@ fun AssemblyToolbar(
         OutlinedButton(
             enabled = selected != null,
             onClick = {
-                rotateSelected(
-                    degrees = -90f
+
+                val element =
+                    assembly.selectedElement
+                        ?: return@OutlinedButton
+
+                onAssemblyChange(
+                    assembly.rotateElement(
+                        elementId = element.id,
+                        degrees = -90f
+                    )
                 )
             }
         ) {
@@ -129,8 +115,16 @@ fun AssemblyToolbar(
         OutlinedButton(
             enabled = selected != null,
             onClick = {
-                rotateSelected(
-                    degrees = 90f
+
+                val element =
+                    assembly.selectedElement
+                        ?: return@OutlinedButton
+
+                onAssemblyChange(
+                    assembly.rotateElement(
+                        elementId = element.id,
+                        degrees = 90f
+                    )
                 )
             }
         ) {
@@ -138,7 +132,7 @@ fun AssemblyToolbar(
         }
 
         // ====================================================
-        // УДАЛИТЬ ВЫБРАННЫЙ ЭЛЕМЕНТ
+        // УДАЛЕНИЕ ВЫБРАННОГО ЭЛЕМЕНТА
         // ====================================================
 
         Button(
@@ -146,28 +140,23 @@ fun AssemblyToolbar(
             onClick = {
 
                 onAssemblyChange(
-                    assembly
-                        .deleteSelectedElement()
+                    assembly.deleteSelectedElement()
                 )
             },
             colors =
                 ButtonDefaults.buttonColors(
                     containerColor =
-                        MaterialTheme
-                            .colorScheme
-                            .error,
+                        MaterialTheme.colorScheme.error,
 
                     contentColor =
-                        MaterialTheme
-                            .colorScheme
-                            .onError
+                        MaterialTheme.colorScheme.onError
                 )
         ) {
             Text("Удалить")
         }
 
         // ====================================================
-        // ОЧИСТИТЬ ВСЮ СБОРКУ
+        // ОЧИСТКА ВСЕЙ СБОРКИ
         // ====================================================
 
         OutlinedButton(
