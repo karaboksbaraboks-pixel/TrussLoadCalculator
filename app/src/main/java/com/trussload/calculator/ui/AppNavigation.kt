@@ -1,11 +1,12 @@
 package com.trussload.calculator.ui
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -17,10 +18,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
+// ============================================================
+// ЭКРАНЫ ПРИЛОЖЕНИЯ
+// ============================================================
+
 enum class AppScreen {
     CALCULATOR,
     ASSEMBLY
 }
+
+// ============================================================
+// НАВИГАЦИЯ
+// ============================================================
 
 @Composable
 fun AppNavigation(
@@ -28,12 +37,18 @@ fun AppNavigation(
 ) {
 
     var currentScreen by remember {
-        mutableStateOf(AppScreen.CALCULATOR)
+        mutableStateOf(
+            AppScreen.CALCULATOR
+        )
     }
 
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
+
+        // ====================================================
+        // ВЕРХНЯЯ ПАНЕЛЬ
+        // ====================================================
 
         Surface(
             modifier = Modifier.fillMaxWidth(),
@@ -47,24 +62,43 @@ fun AppNavigation(
                         horizontal = 12.dp,
                         vertical = 8.dp
                     ),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement =
+                    Arrangement.spacedBy(8.dp)
             ) {
 
+                // ------------------------------------------------
+                // РАСЧЁТ
+                // ------------------------------------------------
+
                 FilterChip(
-                    selected = currentScreen == AppScreen.CALCULATOR,
+                    selected =
+                        currentScreen ==
+                            AppScreen.CALCULATOR,
+
                     onClick = {
-                        currentScreen = AppScreen.CALCULATOR
+                        currentScreen =
+                            AppScreen.CALCULATOR
                     },
+
                     label = {
                         Text("Расчёт")
                     }
                 )
 
+                // ------------------------------------------------
+                // КОНСТРУКТОР
+                // ------------------------------------------------
+
                 FilterChip(
-                    selected = currentScreen == AppScreen.ASSEMBLY,
+                    selected =
+                        currentScreen ==
+                            AppScreen.ASSEMBLY,
+
                     onClick = {
-                        currentScreen = AppScreen.ASSEMBLY
+                        currentScreen =
+                            AppScreen.ASSEMBLY
                     },
+
                     label = {
                         Text("Конструктор")
                     }
@@ -72,14 +106,27 @@ fun AppNavigation(
             }
         }
 
-        when (currentScreen) {
+        // ====================================================
+        // СОДЕРЖИМОЕ
+        // ====================================================
 
-            AppScreen.CALCULATOR -> {
-                calculatorContent()
-            }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+        ) {
 
-            AppScreen.ASSEMBLY -> {
-                TrussAssemblyScreen()
+            when (currentScreen) {
+
+                AppScreen.CALCULATOR -> {
+
+                    calculatorContent()
+                }
+
+                AppScreen.ASSEMBLY -> {
+
+                    TrussAssemblyScreen()
+                }
             }
         }
     }
